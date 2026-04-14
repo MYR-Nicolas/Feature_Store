@@ -1,0 +1,25 @@
+python -m streamlit run streamlit/Requirements_Specification.py
+
+Objective : Create a ETL for ingest data in feature store.
+
+For extract : 
+    -   Using few API for insure extract data with diferent source API use :
+        -   CoinGEKO
+        -   Yahoo finance
+        -   Alpha vantage
+        -   Format stay is json with data OHLC
+        -   Frequence 1 min
+        -   Symbol BTC/USD
+
+    -   Extraction hebdomadaire 
+
+For transform :
+    -  Returns logret_1m / 5m / 15m / 60m
+    -   Return Lags lag_logret_n
+    -   Volatility vol_60m, vol_1d
+    -   Volume volume, log_volume, vol_ma
+    -   Ichimoku tenkan, kijun, span_a, span_b -
+    -   Derived tenkan_dist, kijun_dist, cloud_width
+    -   Signals tenkan_cross, price_vs_cloud
+    -   Target future_logret
+
