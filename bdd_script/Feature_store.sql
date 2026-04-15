@@ -2,6 +2,19 @@
 CREATE SCHEMA feature_store;
 
 
+-- Feature versions metadata
+
+CREATE TABLE feature_store.feature_versions (
+    version_id    SERIAL PRIMARY KEY,
+
+    version_tag   TEXT NOT NULL UNIQUE,  
+    description   TEXT,                  -- Description of feature set
+    features_list TEXT[] NOT NULL,       -- List of included features
+
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_active     BOOLEAN NOT NULL DEFAULT false, -- Only one active version at a time
+    deprecated_at TIMESTAMPTZ
+);
 
 -- Feature table
 
@@ -83,19 +96,6 @@ CREATE INDEX idx_features_lookup
     ON feature_store.features (version_id, ts DESC);
 
 
--- Feature versions metadata
-
-CREATE TABLE feature_store.feature_versions (
-    version_id    SERIAL PRIMARY KEY,
-
-    version_tag   TEXT NOT NULL UNIQUE,  
-    description   TEXT,                  -- Description of feature set
-    features_list TEXT[] NOT NULL,       -- List of included features
-
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    is_active     BOOLEAN NOT NULL DEFAULT false, -- Only one active version at a time
-    deprecated_at TIMESTAMPTZ
-);
 
 -- Ensure only one active version exists
 CREATE UNIQUE INDEX idx_one_active_version
@@ -104,7 +104,7 @@ CREATE UNIQUE INDEX idx_one_active_version
 
 
 
--- Initial version bootstrap
+-- Initial version
 
 INSERT INTO feature_store.feature_versions
     (version_tag, description, features_list, is_active)
