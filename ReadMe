@@ -1,4 +1,6 @@
 python -m streamlit run streamlit/Requirements_Specification.py
+sudo service postgresql start
+
 
 Objective : Create a ETL for ingest data in feature store.
 
