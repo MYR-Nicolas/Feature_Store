@@ -1,0 +1,27 @@
+name: "dbt"
+version: "1.0.0"
+config-version: 1
+
+profile: "dbt"
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  dbt_btc:
+    staging:
+      +schema: staging
+      +materialized: view
+
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+
+    marts:
+      +schema: feature_store
+      +materialized: table
