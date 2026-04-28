@@ -16,4 +16,4 @@ SELECT
 
     LN(NULLIF(volume, 0)) AS log_volume
 
-FROM {{ ref('stg_ohlcv_btc') }}
+FROM {{ ref('stg_ohlcv') }}

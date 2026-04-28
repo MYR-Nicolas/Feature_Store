@@ -2,7 +2,7 @@ name: "dbt_btc"
 version: "1.0.0"
 config-version: 2
 
-profile: "dbt"
+profile: "dbt_btc"
 
 model-paths: ["models", "intermediate", "marts"]
 macro-paths: ["macros"]

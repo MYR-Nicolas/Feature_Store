@@ -10,7 +10,7 @@ SELECT
     -- Shock label (binary classification)
     {{ shock_label('close_price', 15, 0.01) }} AS y_shock_15m
 
-FROM {{ ref('stg_ohlcv_btc') }}
+FROM {{ ref('stg_ohlcv') }}
 
 -- Ensure we only compute labels where future data exists
 WHERE {{ valid_label_horizon('ts', 15) }}

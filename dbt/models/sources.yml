@@ -4,7 +4,7 @@ sources:
   - name: raw
     schema: raw
     tables:
-      - name: ohlcv_btc
+      - name: ohlcv
         description: "Raw BTC OHLCV candles from market APIs"
         columns:
           - name: symbol

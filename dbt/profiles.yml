@@ -1,4 +1,4 @@
-dbt :
+dbt_btc :
   target: dev
   outputs:
     dev:

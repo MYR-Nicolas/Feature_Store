@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: stg_ohlcv_btc
+  - name: stg_ohlcv
     description: "Clean BTC OHLCV candles from raw source."
     columns:
       - name: ts
