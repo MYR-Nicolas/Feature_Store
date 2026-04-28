@@ -1,6 +1,5 @@
 dbt :
   target: dev
-
   outputs:
     dev:
       type: postgres
@@ -9,5 +8,5 @@ dbt :
       password: "{{ env_var('DB_PASSWORD') }}"
       port: "{{ env_var('DB_PORT') | int }}"
       dbname: "{{ env_var('DB_NAME') }}"
-      schema: dbt_dev
+      schema: public
       threads: 4

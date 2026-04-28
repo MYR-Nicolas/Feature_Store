@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: fct_features
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+      - name: source
+        tests:
+          - not_null
+
+      - name: tenkan_sup_kijun
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+      - name: price_sup_cloud
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+      - name: price_sub_cloud
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+  - name: fct_label
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+      - name: y_logret_5m
+        tests:
+          - not_null
+
+      - name: y_logret_15m
+        tests:
+          - not_null
+
+      - name: y_shock_15m
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]

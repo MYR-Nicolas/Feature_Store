@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: int_btc_base_returns
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+      - name: close_price
+        tests:
+          - not_null
+
+      - name: log_volume
+        tests:
+          - not_null
+
+  - name: int_btc_ichimoku
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+
+  - name: int_btc_features
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+      - name: tenkan_sup_kijun
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+      - name: price_sup_cloud
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+
+      - name: price_sub_cloud
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]

@@ -53,9 +53,4 @@ FROM {{ ref('int_btc_features') }}
 
 WHERE ts IS NOT NULL
 
-{% if is_incremental() %}
-  AND ts > (
-      SELECT COALESCE(MAX(ts), '-infinity'::timestamptz)
-      FROM {{ this }}
-  )
-{% endif %}
+{{ incremental_filter('ts') }}

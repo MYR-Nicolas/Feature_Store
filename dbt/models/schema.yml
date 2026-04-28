@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: stg_ohlcv_btc
+    description: "Clean BTC OHLCV candles from raw source."
+    columns:
+      - name: ts
+        tests:
+          - not_null
+          - unique
+
+      - name: symbol
+        tests:
+          - not_null
+
+
+      - name: timeframe
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1m']
+
+      - name: open_price
+        tests:
+          - not_null
+
+      - name: high_price
+        tests:
+          - not_null
+
+      - name: low_price
+        tests:
+          - not_null
+
+      - name: close_price
+        tests:
+          - not_null
+
+      - name: volume
+        tests:
+          - not_null
+
+      - name: source
+        tests:
+          - not_null

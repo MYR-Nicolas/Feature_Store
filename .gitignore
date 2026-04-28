@@ -1,2 +1,8 @@
 venv/
 .env
+load_env.ps1
+
+# dbt artifacts
+target/
+dbt_packages/
+logs/

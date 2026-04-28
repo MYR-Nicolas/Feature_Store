@@ -1,10 +1,11 @@
-name: "dbt"
+name: "dbt_btc"
 version: "1.0.0"
-config-version: 1
+config-version: 2
 
 profile: "dbt"
 
-model-paths: ["models"]
+model-paths: ["models", "intermediate", "marts"]
+macro-paths: ["macros"]
 test-paths: ["tests"]
 
 target-path: "target"
@@ -13,11 +14,7 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  dbt_btc:
-    staging:
-      +schema: staging
-      +materialized: view
-
+  dbt:
     intermediate:
       +schema: intermediate
       +materialized: view
@@ -25,3 +22,7 @@ models:
     marts:
       +schema: feature_store
       +materialized: table
+
+    models:
+      +schema: staging
+      +materialized: view
