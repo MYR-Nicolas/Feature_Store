@@ -34,3 +34,6 @@ cd .\dbt
 dbt debug --profiles-dir .
 dbt run --profiles-dir .
 dbt test --profiles-dir .
+
+docker build -t btc-pipeline .
+docker run --env-file .env btc-pipeline
