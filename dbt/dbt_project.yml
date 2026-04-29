@@ -14,15 +14,15 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  dbt:
+  dbt_btc:
+    models:
+      +schema: staging
+      +materialized: view
+
     intermediate:
       +schema: intermediate
       +materialized: view
 
     marts:
       +schema: feature_store
-      +materialized: table
-
-    models:
-      +schema: staging
-      +materialized: view
+      +materialized: incremental

@@ -1,5 +1,5 @@
 import pandas as pd
-from ETL.extract import finalize_dataframe, COMMON_COLUMNS
+from ELT.extract import finalize_dataframe, COMMON_COLUMNS
 
 
 def test_finalize_dataframe_standardizes_schema():

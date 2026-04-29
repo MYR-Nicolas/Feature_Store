@@ -43,9 +43,9 @@ print(df["ts"].max())
 
 # Remove data ()
 remove_mask = df["ts"] >= "2026-04-13 01:12:00+00:00"
-print(df[remove_mask])  # affiche ce qui sera supprimé
+print(df[remove_mask])  # show rax deleted
 
-# Supprimer ces lignes
+# raw delete
 df = df[~remove_mask]
 
 # Load in postgreSQL

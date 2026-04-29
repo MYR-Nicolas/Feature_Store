@@ -6,7 +6,7 @@ from typing import Optional, Callable, List, Tuple
 import pandas as pd
 import requests
 
-from ETL.config import settings
+from ELT.config import settings
 
 # Global logger
 logger = logging.getLogger(__name__)

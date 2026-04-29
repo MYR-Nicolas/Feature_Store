@@ -1,7 +1,7 @@
 import requests
 import pytest
-from ETL.extract import http_get_with_retry
-from ETL.config import settings
+from ELT.extract import http_get_with_retry
+from ELT.config import settings
 
 
 class MockResponse:

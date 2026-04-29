@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 from datetime import datetime, timezone, timedelta
-from ETL.extract import extract_with_fallback
+from ELT.extract import extract_with_fallback
 
 
 def valid_df():

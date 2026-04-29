@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import pandas as pd
-from ETL.extract import validate_ohlcv_dataframe
-from ETL.config import settings
+from ELT.extract import validate_ohlcv_dataframe
+from ELT.config import settings
 
 
 def make_valid_df():

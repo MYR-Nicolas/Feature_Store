@@ -21,6 +21,8 @@ WITH feat AS (
 )
 
 SELECT
+    symbol,
+    timeframe,
     ts,
     ingested_at AS raw_ingested_at,
     source,

@@ -8,6 +8,8 @@ SELECT
     volume,
     ingested_at,
     source,
+    symbol,
+    timeframe,
 
     {{ log_return('close_price', 1) }} AS logret_1m,
     {{ log_return('close_price', 5) }} AS logret_5m,

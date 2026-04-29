@@ -25,8 +25,12 @@ For transform :
     -   Signals tenkan_cross, price_vs_cloud
     -   Target future_logret
 
+
+
 .\load_env.ps1
+
 cd .\dbt
+
 dbt debug --profiles-dir .
 dbt run --profiles-dir .
 dbt test --profiles-dir .
