@@ -23,22 +23,21 @@ clean-targets:
 
 models:
   dbt_btc:
+
     stg_ohlcv:
-      +schema: staging
       +materialized: view
 
     int_btc_base_returns:
-      +schema: intermediate
       +materialized: view
-
     int_btc_ichimoku:
-      +schema: intermediate
       +materialized: view
-
     int_btc_features:
-      +schema: intermediate
       +materialized: view
 
     feature_store:
-      +schema: feature_store
-      +materialized: incremental
+      features:
+        +schema: feature_store
+        +materialized: incremental
+      labels:
+        +schema: feature_store
+        +materialized: incremental

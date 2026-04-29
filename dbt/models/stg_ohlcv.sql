@@ -13,6 +13,6 @@ SELECT
     ingested_at,
     is_closed
 FROM {{ source('raw', 'ohlcv') }}
-WHERE symbol = 'BTC/USDT'
+WHERE symbol = 'BTCUSDT'
   AND timeframe = '1m'
   AND is_closed = true

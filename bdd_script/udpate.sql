@@ -80,4 +80,5 @@ FOREIGN KEY (symbol, ts, timeframe)
 REFERENCES raw.ohlcv (symbol, ts, timeframe);
 
 
+
 COMMIT;
