@@ -1,8 +1,8 @@
 -- Adds an incremental filter after an existing WHERE clause.
-{% macro incremental_filter(column_name='ts') %}
+{% macro incremental_filter(source_column='ts', target_column='ts') %}
     {% if is_incremental() %}
-        AND {{ column_name }} > (
-            SELECT COALESCE(MAX({{ column_name }}), '-infinity'::timestamptz)
+        AND {{ source_column }} > (
+            SELECT COALESCE(MAX({{ target_column }}), '-infinity'::timestamptz)
             FROM {{ this }}
         )
     {% endif %}

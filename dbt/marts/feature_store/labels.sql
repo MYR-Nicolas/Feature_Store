@@ -37,4 +37,4 @@ CROSS JOIN active_version v
 
 WHERE {{ valid_label_horizon('s.ts', 15) }}
 
-{{ incremental_filter('s.ts') }}
+{{ incremental_filter('s.ts', 'ts') }}

@@ -70,4 +70,4 @@ CROSS JOIN active_version v
 
 WHERE f.ts IS NOT NULL
 
-{{ incremental_filter('f.ts') }}
+{{ incremental_filter('f.ts', 'ts') }}

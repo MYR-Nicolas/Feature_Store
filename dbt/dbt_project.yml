@@ -4,25 +4,41 @@ config-version: 2
 
 profile: "dbt_btc"
 
-model-paths: ["models", "intermediate", "marts"]
-macro-paths: ["macros"]
-test-paths: ["tests"]
+model-paths:
+  - "models"
+  - "intermediate"
+  - "marts"
+
+macro-paths:
+  - "macros"
+
+test-paths:
+  - "tests"
 
 target-path: "target"
+
 clean-targets:
   - "target"
   - "dbt_packages"
 
 models:
   dbt_btc:
-    models:
+    stg_ohlcv:
       +schema: staging
       +materialized: view
 
-    intermediate:
+    int_btc_base_returns:
       +schema: intermediate
       +materialized: view
 
-    marts:
+    int_btc_ichimoku:
+      +schema: intermediate
+      +materialized: view
+
+    int_btc_features:
+      +schema: intermediate
+      +materialized: view
+
+    feature_store:
       +schema: feature_store
       +materialized: incremental

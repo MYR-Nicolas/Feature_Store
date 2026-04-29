@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: fct_features
+  - name: features
     columns:
       - name: ts
         tests:
@@ -30,7 +30,7 @@ models:
               arguments:
                 values: [0, 1]
 
-  - name: fct_label
+  - name: labels
     columns:
       - name: ts
         tests:

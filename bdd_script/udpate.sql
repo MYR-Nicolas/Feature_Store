@@ -67,6 +67,8 @@ ALTER TABLE feature_store.labels
 ALTER COLUMN symbol SET NOT NULL,
 ALTER COLUMN timeframe SET NOT NULL;
 
+ALTER TABLE feature_store.labels
+ADD COLUMN y_shock_15m smallint;
 
 -- ====================================
 -- Add foreign key: labels -> raw ohlcv
