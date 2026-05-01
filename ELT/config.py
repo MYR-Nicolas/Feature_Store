@@ -51,5 +51,11 @@ class Settings:
     # =========================
     VALIDATION_MIN_RATIO: float = float(os.getenv("VALIDATION_MIN_RATIO", "0.95"))
 
+    # =========================
+    # GCP
+    # =========================
+
+    GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+    GCS_PREFIX = os.getenv("GCS_PREFIX")
 
 settings = Settings()

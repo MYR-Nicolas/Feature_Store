@@ -1,11 +1,12 @@
 import logging
-import os
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
 
 from ELT.extract import extract_with_fallback
-from ELT.load import load_raw_ohlcv
+from ELT.load import load_df_to_gcs
+from ELT.config import settings
 
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +36,8 @@ def run_command(command: list[str], cwd: Path) -> None:
         shell=False,
     )
 
-    logger.info(result.stdout)
+    if result.stdout:
+        logger.info(result.stdout)
 
     if result.returncode != 0:
         logger.error(result.stderr)
@@ -44,44 +46,61 @@ def run_command(command: list[str], cwd: Path) -> None:
 
 def run_dbt_pipeline() -> None:
     """
-    Execute the full dbt pipeline (debug, run, test).
+    Execute the full dbt pipeline.
 
     Raises:
         RuntimeError: If any dbt command fails.
     """
-    logger.info("Running dbt debug...")
+    logger.info("Running dbt debug ")
     run_command(["dbt", "debug", "--profiles-dir", "."], DBT_DIR)
 
     logger.info("Running dbt transformations...")
     run_command(["dbt", "run", "--profiles-dir", "."], DBT_DIR)
 
-    logger.info("Running dbt tests...")
+    logger.info("Running dbt tests ")
     run_command(["dbt", "test", "--profiles-dir", "."], DBT_DIR)
+
+
+def build_weekly_paths() -> tuple[str, str]:
+    """
+    Build local and GCS paths for the weekly BTC Parquet file.
+
+    Returns:
+        tuple[str, str]: Local Parquet path and GCS destination path.
+    """
+    execution_date = datetime.utcnow().strftime("%Y%m%d")
+
+    filename = f"btc_1m_weekly_{execution_date}.parquet"
+
+    local_path = f"data/weekly/{filename}"
+    gcs_path = f"{settings.GCS_PREFIX}/weekly/{filename}"
+
+    return local_path, gcs_path
 
 
 def main() -> None:
     """
-    Main entry point for the ELT pipeline.
+    Main entry point for the weekly BTC ELT pipeline.
 
-    This pipeline performs:
-        Data extraction with fallback mechanism
-        Loading raw OHLCV data into the database
-        Running dbt transformations and tests
-
-    Raises:
-        RuntimeError: If any step in the pipeline fails.
     """
     start = time.time()
 
-    logger.info("Starting BTC ELT pipeline")
+    logger.info("Starting BTC weekly ELT pipeline")
 
     df = extract_with_fallback()
 
     logger.info("Extracted rows: %s", len(df))
+    logger.info("Columns: %s", list(df.columns))
 
-    rows_loaded = load_raw_ohlcv(df)
+    local_path, gcs_path = build_weekly_paths()
 
-    logger.info("Loaded rows into raw.ohlcv: %s", rows_loaded)
+    gcs_uri = load_df_to_gcs(
+        df=df,
+        local_path=local_path,
+        gcs_path=gcs_path,
+    )
+
+    logger.info("Uploaded weekly OHLCV data to: %s", gcs_uri)
 
     run_dbt_pipeline()
 

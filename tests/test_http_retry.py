@@ -18,7 +18,7 @@ def test_http_get_success(mocker, monkeypatch):
     monkeypatch.setattr(settings, "RETRY_SLEEP_SECONDS", 0)
     monkeypatch.setattr(settings, "TIMEOUT", 5)
 
-    mock_get = mocker.patch("ETL.extract.requests.get", return_value=MockResponse())
+    mock_get = mocker.patch("ELT.extract.requests.get", return_value=MockResponse())
 
     response = http_get_with_retry("https://fake-url.com", source_name="test")
 
@@ -33,7 +33,7 @@ def test_http_get_retry_then_success(mocker, monkeypatch):
     monkeypatch.setattr(settings, "TIMEOUT", 5)
 
     mock_get = mocker.patch(
-        "ETL.extract.requests.get",
+        "ELT.extract.requests.get",
         side_effect=[
             requests.Timeout("timeout"),
             MockResponse()
@@ -52,7 +52,7 @@ def test_http_get_fails_after_retries(mocker, monkeypatch):
     monkeypatch.setattr(settings, "RETRY_SLEEP_SECONDS", 0)
     monkeypatch.setattr(settings, "TIMEOUT", 5)
 
-    mocker.patch("ETL.extract.requests.get", side_effect=requests.Timeout("timeout"))
+    mocker.patch("ELT.extract.requests.get", side_effect=requests.Timeout("timeout"))
 
     with pytest.raises(RuntimeError, match="HTTP failed"):
         http_get_with_retry("https://fake-url.com", source_name="test")
