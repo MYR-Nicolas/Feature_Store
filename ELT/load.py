@@ -56,7 +56,7 @@ def upload_to_gcs(
     """
     bucket_name = bucket_name or settings.GCS_BUCKET_NAME
 
-    client = storage.Client()
+    client = storage.Client(project=settings.GCP_PROJECT_ID)
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(gcs_path)
 
