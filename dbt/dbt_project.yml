@@ -6,8 +6,6 @@ profile: "dbt_btc"
 
 model-paths:
   - "models"
-  - "intermediate"
-  - "marts"
 
 macro-paths:
   - "macros"
@@ -24,20 +22,29 @@ clean-targets:
 models:
   dbt_btc:
 
-    stg_ohlcv:
+    silver:
       +materialized: view
 
-    int_btc_base_returns:
-      +materialized: view
-    int_btc_ichimoku:
-      +materialized: view
-    int_btc_features:
+    intermediate:
       +materialized: view
 
-    feature_store:
-      features:
+    marts:
+      feature_store:
         +schema: feature_store
-        +materialized: incremental
-      labels:
-        +schema: feature_store
-        +materialized: incremental
+
+        feature_versions:
+          +materialized: table
+
+        features:
+          +materialized: incremental
+          +partition_by:
+            field: ts
+            data_type: timestamp
+            granularity: day
+
+        labels:
+          +materialized: incremental
+          +partition_by:
+            field: ts
+            data_type: timestamp
+            granularity: day

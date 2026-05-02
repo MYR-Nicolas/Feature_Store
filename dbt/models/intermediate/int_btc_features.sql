@@ -71,9 +71,11 @@ SELECT
     {{ binary_signal('close_price < LEAST(span_a, span_b)') }} AS price_sub_cloud,
 
     -- Lagged signal
-    {{ lag_feature(
-        "CASE WHEN close_price > GREATEST(span_a, span_b) THEN 1 ELSE 0 END",
-        5
-    ) }}::SMALLINT AS lag_price_sup_cloud_5
+    CAST(
+        {{ lag_feature(
+            "CASE WHEN close_price > GREATEST(span_a, span_b) THEN 1 ELSE 0 END",
+            5
+        ) }}
+    AS INT64) AS lag_price_sup_cloud_5
 
 FROM feat

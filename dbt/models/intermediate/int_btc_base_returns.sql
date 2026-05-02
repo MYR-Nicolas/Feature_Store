@@ -16,6 +16,6 @@ SELECT
     {{ log_return('close_price', 15) }} AS logret_15m,
     {{ log_return('close_price', 60) }} AS logret_60m,
 
-    LN(NULLIF(volume, 0)) AS log_volume
+        LN(NULLIF(volume, 0)) AS log_volume
 
-FROM {{ ref('stg_ohlcv') }}
+FROM {{ ref('btc_ohlcv_1m_silver') }}

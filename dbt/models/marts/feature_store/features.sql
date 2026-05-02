@@ -1,19 +1,14 @@
 {{
     config(
         materialized='incremental',
-        unique_key=['ts', 'version_id'],
-        indexes=[
-            {'columns': ['ts']},
-            {'columns': ['source']},
-            {'columns': ['version_id', 'ts']}
-        ]
+        unique_key=['ts', 'version_id']
     )
 }}
 
 WITH active_version AS (
 
     SELECT version_id
-    FROM feature_store.feature_versions
+    FROM {{ ref('feature_versions') }}
     WHERE is_active = true
     LIMIT 1
 

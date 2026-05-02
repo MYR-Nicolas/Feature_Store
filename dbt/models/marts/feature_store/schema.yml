@@ -1,6 +1,17 @@
 version: 2
 
 models:
+  - name: feature_versions
+    columns:
+      - name: version_id
+        tests:
+          - not_null
+          - unique
+
+      - name: is_active
+        tests:
+          - not_null
+
   - name: features
     columns:
       - name: ts
@@ -17,18 +28,21 @@ models:
           - accepted_values:
               arguments:
                 values: [0, 1]
+                quote: false
 
       - name: price_sup_cloud
         tests:
           - accepted_values:
               arguments:
                 values: [0, 1]
+                quote: false
 
       - name: price_sub_cloud
         tests:
           - accepted_values:
               arguments:
                 values: [0, 1]
+                quote: false
 
   - name: labels
     columns:
@@ -51,3 +65,4 @@ models:
           - accepted_values:
               arguments:
                 values: [0, 1]
+                quote: false

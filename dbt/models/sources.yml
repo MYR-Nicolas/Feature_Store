@@ -1,24 +1,23 @@
 version: 2
 
 sources:
-  - name: raw
-    schema: raw
+  - name: biglake_bronze
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: "{{ env_var('BQ_DATASET') }}"
     tables:
-      - name: ohlcv
-        description: "Raw BTC OHLCV candles from market APIs"
+      - name: btc_ohlcv_1m_bronze
+        description: "BigLake external table over BTC OHLCV 1-minute Parquet files in GCS."
         columns:
-          - name: symbol
+          - name: open_time
             tests:
               - not_null
-          - name: ts
-            tests:
-              - not_null
-          - name: timeframe
-            tests:
-              - not_null
-          - name: close_price
+              - unique
+          - name: close
             tests:
               - not_null
           - name: volume
+            tests:
+              - not_null
+          - name: symbol
             tests:
               - not_null

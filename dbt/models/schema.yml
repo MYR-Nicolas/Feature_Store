@@ -1,8 +1,9 @@
 version: 2
 
 models:
-  - name: stg_ohlcv
-    description: "Clean BTC OHLCV candles from raw source."
+  - name: btc_ohlcv_1m_silver
+    description: "Clean BTC OHLCV candles from BigLake bronze source."
+
     columns:
       - name: ts
         tests:
@@ -12,7 +13,6 @@ models:
       - name: symbol
         tests:
           - not_null
-
 
       - name: timeframe
         tests:
@@ -44,3 +44,16 @@ models:
       - name: source
         tests:
           - not_null
+
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "high_price >= low_price"
+
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "open_price >= 0 AND close_price >= 0"
+
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "volume >= 0"
