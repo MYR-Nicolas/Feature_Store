@@ -51,7 +51,15 @@ jobs:
         run: |
           gcloud run jobs update btc-pipeline \
             --image us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl \
-            --region us-central1
+            --region us-central1 \
+            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
+                           GCP_LOCATION=${{ vars.GCP_LOCATION }},\
+                           GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},\
+                           GCS_URI=${{ secrets.GCS_URI }},\
+                           GCS_PREFIX=${{ vars.GCS_PREFIX }},\
+                           BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},\
+                           BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},\
+                           BQ_DATASET=${{ vars.BQ_DATASET }}
 
       - name: Deploy Streamlit Monitoring
         run: |
@@ -59,4 +67,7 @@ jobs:
             --source streamlit/ \
             --region us-central1 \
             --allow-unauthenticated \
-            --set-env-vars GCP_PROJECT=${{ secrets.GCP_PROJECT_ID }}
+            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
+                           GCP_LOCATION=${{ vars.GCP_LOCATION }},\
+                           BQ_DATASET=${{ vars.BQ_DATASET }},\
+                           BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}
