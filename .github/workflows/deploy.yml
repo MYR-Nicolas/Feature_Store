@@ -1,4 +1,3 @@
-
 name: Build & Deploy BTC Pipeline
 
 on:
@@ -129,7 +128,7 @@ jobs:
           IMAGE_URI="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${GITHUB_SHA}"
           printf 'IMAGE_URI=%s\n' "$IMAGE_URI" >> "$GITHUB_ENV"
 
-          gcloud builds submit \
+          gcloud builds submit . \
             --project "$GCP_PROJECT_ID" \
             --tag "$IMAGE_URI" \
             --region "$REGION"
