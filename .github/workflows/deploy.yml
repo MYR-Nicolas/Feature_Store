@@ -9,6 +9,7 @@ on:
       - 'dbt/**'
       - 'requirements.txt'
       - 'dockerfile'
+    workflow_dispatch:
 
 jobs:
   test:
