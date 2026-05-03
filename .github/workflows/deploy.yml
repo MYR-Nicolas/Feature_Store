@@ -8,6 +8,7 @@ on:
       - 'dbt/**'
       - 'requirements.txt'
       - 'dockerfile'
+      - 'streamlit/**'
   workflow_dispatch:
 
 concurrency:
@@ -40,7 +41,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # requis pour OIDC
+      id-token: write
       contents: read
     timeout-minutes: 30
 
@@ -48,7 +49,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Authenticate to GCP (OIDC)
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/950154154597/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
@@ -60,31 +61,23 @@ jobs:
       - name: Build & Push image
         run: |
           gcloud builds submit \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --tag us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }} \
-            --region us-central1
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --tag "us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }}" \
+            --region "us-central1"
 
       - name: Update Cloud Run Job
         run: |
           gcloud run jobs update btc-pipeline \
-            --image us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }} \
-            --region us-central1 \
-            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
-GCP_LOCATION=${{ vars.GCP_LOCATION }},\
-GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},\
-GCS_URI=${{ secrets.GCS_URI }},\
-GCS_PREFIX=${{ vars.GCS_PREFIX }},\
-BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},\
-BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},\
-BQ_DATASET=${{ vars.BQ_DATASET }}
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --image "us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }}" \
+            --region "us-central1" \
+            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_LOCATION }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},GCS_URI=${{ secrets.GCS_URI }},GCS_PREFIX=${{ vars.GCS_PREFIX }},BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},BQ_DATASET=${{ vars.BQ_DATASET }}"
 
-      - name: Deploy Streamlit Monitoring (private)
+      - name: Deploy Streamlit Monitoring
         run: |
           gcloud run deploy monitoring-dashboard \
-            --source streamlit/ \
-            --region us-central1 \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --source "streamlit/" \
+            --region "us-central1" \
             --no-allow-unauthenticated \
-            --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
-GCP_LOCATION=${{ vars.GCP_LOCATION }},\
-BQ_DATASET=${{ vars.BQ_DATASET }},\
-BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}
+            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_LOCATION }},BQ_DATASET=${{ vars.BQ_DATASET }},BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}"
