@@ -131,7 +131,7 @@ jobs:
           gcloud builds submit . \
             --project "$GCP_PROJECT_ID" \
             --tag "$IMAGE_URI" \
-            --region "$REGION"
+            --region "$REGION" \
             --suppress-logs
 
       - name: Create Cloud Run Job env file
