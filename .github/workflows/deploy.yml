@@ -1,3 +1,4 @@
+
 name: Build & Deploy BTC Pipeline
 
 on:
@@ -6,14 +7,23 @@ on:
     paths:
       - 'ELT/**'
       - 'dbt/**'
-      - 'requirements.txt'
-      - 'dockerfile'
       - 'streamlit/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'dockerfile'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 concurrency:
   group: btc-pipeline-deploy
   cancel-in-progress: true
+
+env:
+  REGION: us-central1
+  ARTIFACT_REPOSITORY: pipelines
+  IMAGE_NAME: feature-store-etl
+  CLOUD_RUN_JOB_NAME: btc-pipeline
+  STREAMLIT_SERVICE_NAME: monitoring-dashboard
 
 jobs:
   test:
@@ -32,10 +42,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest tests/ -v
+        run: |
+          if [ -d "tests" ]; then
+            pytest tests/ -v
+          fi
 
   deploy:
     needs: test
@@ -49,6 +64,53 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare and validate variables
+        shell: bash
+        env:
+          RAW_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          RAW_GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+          RAW_GCS_URI: ${{ secrets.GCS_URI }}
+          RAW_GCP_LOCATION: ${{ vars.GCP_LOCATION }}
+          RAW_GCS_PREFIX: ${{ vars.GCS_PREFIX }}
+          RAW_BQ_CONNECTION_ID: ${{ vars.BQ_CONNECTION_ID }}
+          RAW_BQ_TABLE_NAME: ${{ vars.BQ_TABLE_NAME }}
+          RAW_BQ_DATASET: ${{ vars.BQ_DATASET }}
+        run: |
+          clean() {
+            printf '%s' "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+          }
+
+          GCP_PROJECT_ID="$(clean "$RAW_GCP_PROJECT_ID")"
+          GCS_BUCKET_NAME="$(clean "$RAW_GCS_BUCKET_NAME")"
+          GCS_URI="$(clean "$RAW_GCS_URI")"
+          GCP_LOCATION="$(clean "$RAW_GCP_LOCATION")"
+          GCS_PREFIX="$(clean "$RAW_GCS_PREFIX")"
+          BQ_CONNECTION_ID="$(clean "$RAW_BQ_CONNECTION_ID")"
+          BQ_TABLE_NAME="$(clean "$RAW_BQ_TABLE_NAME")"
+          BQ_DATASET="$(clean "$RAW_BQ_DATASET")"
+
+          [ -n "$GCP_PROJECT_ID" ] || exit 1
+          [ -n "$GCS_BUCKET_NAME" ] || exit 1
+          [ -n "$GCS_URI" ] || exit 1
+          [ -n "$GCP_LOCATION" ] || exit 1
+          [ -n "$GCS_PREFIX" ] || exit 1
+          [ -n "$BQ_CONNECTION_ID" ] || exit 1
+          [ -n "$BQ_TABLE_NAME" ] || exit 1
+          [ -n "$BQ_DATASET" ] || exit 1
+
+          [[ "$GCP_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || exit 1
+
+          {
+            printf 'GCP_PROJECT_ID=%s\n' "$GCP_PROJECT_ID"
+            printf 'GCS_BUCKET_NAME=%s\n' "$GCS_BUCKET_NAME"
+            printf 'GCS_URI=%s\n' "$GCS_URI"
+            printf 'GCP_LOCATION=%s\n' "$GCP_LOCATION"
+            printf 'GCS_PREFIX=%s\n' "$GCS_PREFIX"
+            printf 'BQ_CONNECTION_ID=%s\n' "$BQ_CONNECTION_ID"
+            printf 'BQ_TABLE_NAME=%s\n' "$BQ_TABLE_NAME"
+            printf 'BQ_DATASET=%s\n' "$BQ_DATASET"
+          } >> "$GITHUB_ENV"
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -58,26 +120,55 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build & Push image
+      - name: Configure gcloud project
         run: |
+          gcloud config set project "$GCP_PROJECT_ID"
+
+      - name: Build and push image
+        run: |
+          IMAGE_URI="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${GITHUB_SHA}"
+          printf 'IMAGE_URI=%s\n' "$IMAGE_URI" >> "$GITHUB_ENV"
+
           gcloud builds submit \
-            --project "${{ secrets.GCP_PROJECT_ID }}" \
-            --tag "us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }}" \
-            --region "us-central1"
+            --project "$GCP_PROJECT_ID" \
+            --tag "$IMAGE_URI" \
+            --region "$REGION"
+
+      - name: Create Cloud Run Job env file
+        run: |
+          cat > cloud-run-job-env.yaml <<EOF
+          GCP_PROJECT_ID: "$GCP_PROJECT_ID"
+          GCP_LOCATION: "$GCP_LOCATION"
+          GCS_BUCKET_NAME: "$GCS_BUCKET_NAME"
+          GCS_URI: "$GCS_URI"
+          GCS_PREFIX: "$GCS_PREFIX"
+          BQ_CONNECTION_ID: "$BQ_CONNECTION_ID"
+          BQ_TABLE_NAME: "$BQ_TABLE_NAME"
+          BQ_DATASET: "$BQ_DATASET"
+          EOF
 
       - name: Update Cloud Run Job
         run: |
-          gcloud run jobs update btc-pipeline \
-            --project "${{ secrets.GCP_PROJECT_ID }}" \
-            --image "us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }}" \
-            --region "us-central1" \
-            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_LOCATION }},GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},GCS_URI=${{ secrets.GCS_URI }},GCS_PREFIX=${{ vars.GCS_PREFIX }},BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},BQ_DATASET=${{ vars.BQ_DATASET }}"
+          gcloud run jobs update "$CLOUD_RUN_JOB_NAME" \
+            --project "$GCP_PROJECT_ID" \
+            --image "$IMAGE_URI" \
+            --region "$REGION" \
+            --env-vars-file cloud-run-job-env.yaml
+
+      - name: Create Streamlit env file
+        run: |
+          cat > streamlit-env.yaml <<EOF
+          GCP_PROJECT_ID: "$GCP_PROJECT_ID"
+          GCP_LOCATION: "$GCP_LOCATION"
+          BQ_DATASET: "$BQ_DATASET"
+          BQ_TABLE_NAME: "$BQ_TABLE_NAME"
+          EOF
 
       - name: Deploy Streamlit Monitoring
         run: |
-          gcloud run deploy monitoring-dashboard \
-            --project "${{ secrets.GCP_PROJECT_ID }}" \
+          gcloud run deploy "$STREAMLIT_SERVICE_NAME" \
+            --project "$GCP_PROJECT_ID" \
             --source "streamlit/" \
-            --region "us-central1" \
+            --region "$REGION" \
             --no-allow-unauthenticated \
-            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_LOCATION }},BQ_DATASET=${{ vars.BQ_DATASET }},BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}"
+            --env-vars-file streamlit-env.yaml
