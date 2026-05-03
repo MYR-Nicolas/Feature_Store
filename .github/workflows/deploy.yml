@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: Build & Deploy BTC Pipeline
 
 on:
@@ -11,16 +10,25 @@ on:
       - 'dockerfile'
   workflow_dispatch:
 
+concurrency:
+  group: btc-pipeline-deploy
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -32,13 +40,16 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      id-token: write   # requis pour OIDC
       contents: read
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 30
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2.1.7
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (OIDC)
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/950154154597/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
           service_account: "pipeline-sa@data-lakehouse-495016.iam.gserviceaccount.com"
@@ -49,30 +60,31 @@ jobs:
       - name: Build & Push image
         run: |
           gcloud builds submit \
-            --tag us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --tag us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }} \
             --region us-central1
 
       - name: Update Cloud Run Job
         run: |
           gcloud run jobs update btc-pipeline \
-            --image us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl \
+            --image us-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/pipelines/feature-store-etl:${{ github.sha }} \
             --region us-central1 \
             --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
-                           GCP_LOCATION=${{ vars.GCP_LOCATION }},\
-                           GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},\
-                           GCS_URI=${{ secrets.GCS_URI }},\
-                           GCS_PREFIX=${{ vars.GCS_PREFIX }},\
-                           BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},\
-                           BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},\
-                           BQ_DATASET=${{ vars.BQ_DATASET }}
+GCP_LOCATION=${{ vars.GCP_LOCATION }},\
+GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }},\
+GCS_URI=${{ secrets.GCS_URI }},\
+GCS_PREFIX=${{ vars.GCS_PREFIX }},\
+BQ_CONNECTION_ID=${{ vars.BQ_CONNECTION_ID }},\
+BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }},\
+BQ_DATASET=${{ vars.BQ_DATASET }}
 
-      - name: Deploy Streamlit Monitoring
+      - name: Deploy Streamlit Monitoring (private)
         run: |
           gcloud run deploy monitoring-dashboard \
             --source streamlit/ \
             --region us-central1 \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --set-env-vars GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
-                           GCP_LOCATION=${{ vars.GCP_LOCATION }},\
-                           BQ_DATASET=${{ vars.BQ_DATASET }},\
-                           BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}
+GCP_LOCATION=${{ vars.GCP_LOCATION }},\
+BQ_DATASET=${{ vars.BQ_DATASET }},\
+BQ_TABLE_NAME=${{ vars.BQ_TABLE_NAME }}
