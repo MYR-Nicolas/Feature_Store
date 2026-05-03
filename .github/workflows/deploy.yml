@@ -31,13 +31,17 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: "projects/950154154597/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "pipeline-sa@data-lakehouse-495016.iam.gserviceaccount.com"
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
