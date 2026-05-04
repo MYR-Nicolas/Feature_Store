@@ -5,22 +5,17 @@ from google.cloud import bigquery
 def compute_quality_metrics(df):
     metrics = {}
 
+    ts_col = "timestamp" if "timestamp" in df.columns else "open_time"
+
     metrics["row_count"] = len(df)
-    metrics["null_rate"] = df.isna().mean().mean()
-    metrics["duplicate_rate"] = df.duplicated().mean()
+    metrics["column_count"] = len(df.columns)
+    metrics["null_count"] = int(df.isna().sum().sum())
+    metrics["duplicate_count"] = int(df.duplicated().sum())
 
-    metrics["min_timestamp"] = df["timestamp"].min().timestamp()
-    metrics["max_timestamp"] = df["timestamp"].max().timestamp()
+    ts = pd.to_datetime(df[ts_col], errors="coerce", utc=True)
 
-    # gaps (important pour OHLCV)
-    df_sorted = df.sort_values("timestamp")
-    diffs = df_sorted["timestamp"].diff().dt.total_seconds()
-
-    metrics["missing_intervals"] = (diffs > 60).sum()
-
-    # anomalies simples
-    metrics["price_spike"] = (df["close"].pct_change().abs() > 0.1).sum()
-    metrics["volume_spike"] = (df["volume"].pct_change().abs() > 5).sum()
+    metrics["min_timestamp"] = ts.min().timestamp()
+    metrics["max_timestamp"] = ts.max().timestamp()
 
     return metrics
 
