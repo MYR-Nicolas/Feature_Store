@@ -1,7 +1,8 @@
 venv/
 .env
 load_env.ps1
-profiles.yml
+
+!dbt/profiles.yml
 
 # dbt artifacts
 target/
