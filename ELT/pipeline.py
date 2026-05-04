@@ -96,7 +96,7 @@ def main() -> None:
     github_sha = os.getenv("GITHUB_SHA")
     image_uri = os.getenv("IMAGE_URI")
 
-    started_at = utc_now()
+    started_at = datetime.now(timezone.utc)
     start_time = time.time()
 
     status = "success"
@@ -110,32 +110,37 @@ def main() -> None:
     except Exception:
         status = "failed"
         error_message = traceback.format_exc()
+        logger.exception("Pipeline failed")
         raise
 
     finally:
-        ended_at = utc_now()
+        ended_at = datetime.now(timezone.utc)
         duration_seconds = round(time.time() - start_time, 2)
 
-        insert_pipeline_run(
-            project_id=project_id,
-            run_id=run_id,
-            pipeline_name="btc-pipeline",
-            status=status,
-            started_at=started_at,
-            ended_at=ended_at,
-            duration_seconds=duration_seconds,
-            rows_extracted=rows_extracted,
-            rows_loaded=rows_loaded,
-            error_message=error_message,
-            github_sha=github_sha,
-            image_uri=image_uri,
-        )
+        try:
+            insert_pipeline_run(
+                project_id=project_id,
+                run_id=run_id,
+                pipeline_name="btc-pipeline",
+                status=status,
+                started_at=started_at,
+                ended_at=ended_at,
+                duration_seconds=duration_seconds,
+                rows_extracted=rows_extracted,
+                rows_loaded=rows_loaded,
+                error_message=error_message[:1000] if error_message else None,
+                github_sha=github_sha,
+                image_uri=image_uri,
+            )
 
-        logger.info(
-            "Pipeline run logged to BigQuery with status=%s, duration=%s seconds",
-            status,
-            duration_seconds,
-        )
+            logger.info(
+                "Pipeline run logged to BigQuery with status=%s, duration=%s seconds",
+                status,
+                duration_seconds,
+            )
+
+        except Exception:
+            logger.exception("Failed to log pipeline run to BigQuery")
 
 
 if __name__ == "__main__":
