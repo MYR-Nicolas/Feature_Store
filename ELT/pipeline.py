@@ -91,7 +91,7 @@ def run_pipeline() -> tuple[int, int]:
 
     run_dbt_pipeline()
 
-    return rows_extracted, rows_loaded
+    return rows_extracted, rows_loaded()
 
 
 def main() -> None:
