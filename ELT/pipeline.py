@@ -23,10 +23,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DBT_DIR = PROJECT_ROOT / "dbt"
 
 
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
 def run_command(command: list[str], cwd: Path) -> None:
     result = subprocess.run(
         command,
@@ -39,8 +35,10 @@ def run_command(command: list[str], cwd: Path) -> None:
     if result.stdout:
         logger.info(result.stdout)
 
-    if result.returncode != 0:
+    if result.stderr:
         logger.error(result.stderr)
+
+    if result.returncode != 0:
         raise RuntimeError(f"Command failed: {' '.join(command)}")
 
 
@@ -68,7 +66,7 @@ def build_weekly_paths() -> tuple[str, str]:
     return local_path, gcs_path
 
 
-def run_pipeline() -> tuple[int, int]:
+def run_pipeline():
     logger.info("Starting BTC weekly ELT pipeline")
 
     df = extract_with_fallback()
@@ -91,7 +89,7 @@ def run_pipeline() -> tuple[int, int]:
 
     run_dbt_pipeline()
 
-    return rows_extracted, rows_loaded()
+    return rows_extracted, rows_loaded, df
 
 
 def main() -> None:
@@ -108,13 +106,12 @@ def main() -> None:
     error_message = None
     rows_extracted = None
     rows_loaded = None
-
-    rows_extracted, rows_loaded, df = run_pipeline()
-
-    metrics = compute_quality_metrics(df)
+    df = None
+    metrics = None
 
     try:
-        rows_extracted, rows_loaded = run_pipeline()
+        rows_extracted, rows_loaded, df = run_pipeline()
+        metrics = compute_quality_metrics(df)
 
     except Exception:
         status = "failed"
@@ -150,18 +147,31 @@ def main() -> None:
 
         except Exception:
             logger.exception("Failed to log pipeline run to BigQuery")
-    
-        insert_dbt_results(
-        project_id=project_id,
-        run_id=run_id,
-        run_results_path=DBT_DIR / "target" / "run_results.json",
-        )
 
-        insert_quality_metrics(
-        project_id=project_id,
-     run_id=run_id,
-        metrics=metrics,
-        )
+        try:
+            insert_dbt_results(
+                project_id=project_id,
+                run_id=run_id,
+                run_results_path=DBT_DIR / "target" / "run_results.json",
+            )
+
+            logger.info("dbt results logged to BigQuery")
+
+        except Exception:
+            logger.exception("Failed to log dbt results to BigQuery")
+
+        if metrics is not None:
+            try:
+                insert_quality_metrics(
+                    project_id=project_id,
+                    run_id=run_id,
+                    metrics=metrics,
+                )
+
+                logger.info("Data quality metrics logged to BigQuery")
+
+            except Exception:
+                logger.exception("Failed to log data quality metrics to BigQuery")
 
 
 if __name__ == "__main__":
