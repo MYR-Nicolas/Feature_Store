@@ -132,7 +132,7 @@ jobs:
             --project "$GCP_PROJECT_ID" \
             --tag "$IMAGE_URI" \
             --region "$REGION" \
-            --gcs-log-dir=gs://data-lakehouse-495016-build-logs/logs \
+            --gcs-log-dir="gs://data-lakehouse-495016-build-logs/logs" \
             --service-account="projects/data-lakehouse-495016/serviceAccounts/pipeline-sa@data-lakehouse-495016.iam.gserviceaccount.com"
 
       - name: Create Cloud Run Job env file
@@ -146,6 +146,8 @@ jobs:
           BQ_CONNECTION_ID: "$BQ_CONNECTION_ID"
           BQ_TABLE_NAME: "$BQ_TABLE_NAME"
           BQ_DATASET: "$BQ_DATASET"
+          GITHUB_SHA: "$GITHUB_SHA"
+          IMAGE_URI: "$IMAGE_URI"
           EOF
 
       - name: Update Cloud Run Job

@@ -1,0 +1,44 @@
+from datetime import datetime, timezone
+from google.cloud import bigquery
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def insert_pipeline_run(
+    project_id: str,
+    run_id: str,
+    pipeline_name: str,
+    status: str,
+    started_at: str,
+    ended_at: str,
+    duration_seconds: float,
+    rows_extracted: int | None = None,
+    rows_loaded: int | None = None,
+    error_message: str | None = None,
+    github_sha: str | None = None,
+    image_uri: str | None = None,
+):
+    client = bigquery.Client(project=project_id)
+
+    table_id = f"{project_id}.monitoring.pipeline_runs"
+
+    row = {
+        "run_id": run_id,
+        "pipeline_name": pipeline_name,
+        "status": status,
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "duration_seconds": duration_seconds,
+        "rows_extracted": rows_extracted,
+        "rows_loaded": rows_loaded,
+        "error_message": error_message,
+        "github_sha": github_sha,
+        "image_uri": image_uri,
+    }
+
+    errors = client.insert_rows_json(table_id, [row])
+
+    if errors:
+        raise RuntimeError(f"BigQuery insert failed: {errors}")
