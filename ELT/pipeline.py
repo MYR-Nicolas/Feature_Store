@@ -48,6 +48,9 @@ def run_dbt_pipeline() -> None:
     logger.info("Running dbt debug")
     run_command(["dbt", "debug", "--profiles-dir", "."], DBT_DIR)
 
+    logger.info("Installing dbt dependencies")
+    run_command(["dbt", "deps", "--profiles-dir", "."], DBT_DIR)
+
     logger.info("Running dbt transformations")
     run_command(["dbt", "run", "--profiles-dir", "."], DBT_DIR)
 
