@@ -11,6 +11,8 @@ from ELT.extract import extract_with_fallback
 from ELT.load import load_df_to_gcs
 from ELT.config import settings
 from ELT.monitoring import insert_pipeline_run
+from ELT.dbt_monitoring import insert_dbt_results
+from ELT.monitoring_data_quality import compute_quality_metrics, insert_quality_metrics
 
 
 logging.basicConfig(level=logging.INFO)
@@ -104,6 +106,10 @@ def main() -> None:
     rows_extracted = None
     rows_loaded = None
 
+    rows_extracted, rows_loaded, df = run_pipeline()
+
+    metrics = compute_quality_metrics(df)
+
     try:
         rows_extracted, rows_loaded = run_pipeline()
 
@@ -141,6 +147,18 @@ def main() -> None:
 
         except Exception:
             logger.exception("Failed to log pipeline run to BigQuery")
+    
+        insert_dbt_results(
+        project_id=project_id,
+        run_id=run_id,
+        run_results_path=DBT_DIR / "target" / "run_results.json",
+        )
+
+        insert_quality_metrics(
+        project_id=project_id,
+     run_id=run_id,
+        metrics=metrics,
+        )
 
 
 if __name__ == "__main__":
