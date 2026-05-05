@@ -13,6 +13,7 @@ from ELT.config import settings
 from ELT.monitoring import insert_pipeline_run
 from ELT.dbt_monitoring import insert_dbt_results
 from ELT.monitoring_data_quality import compute_quality_metrics, insert_quality_metrics
+from ELT.export_metrics import export_monitoring_cache
 
 
 logging.basicConfig(level=logging.INFO)
@@ -172,6 +173,33 @@ def main() -> None:
 
             except Exception:
                 logger.exception("Failed to log data quality metrics to BigQuery")
+
+        # Export metrics GCS pour le dashboard Streamlit
+        bucket_name = os.getenv("GCS_BUCKET_NAME", "")
+        if bucket_name:
+            try:
+                export_monitoring_cache(
+                    project_id=project_id,
+                    bucket_name=bucket_name,
+                    run_id=run_id,
+                    pipeline_run={
+                        "run_id": run_id,
+                        "pipeline_name": "btc-pipeline",
+                        "status": status,
+                        "started_at": started_at.isoformat(),
+                        "ended_at": ended_at.isoformat(),
+                        "duration_seconds": duration_seconds,
+                        "rows_extracted": rows_extracted,
+                        "rows_loaded": rows_loaded,
+                        "error_message": error_message[:1000] if error_message else None,
+                    },
+                    dbt_results=[],
+                    quality_metrics=metrics or {},
+                    dbt_run_results_path=DBT_DIR / "target" / "run_results.json",
+                )
+                logger.info("Monitoring cache exported to GCS")
+            except Exception:
+                logger.exception("Failed to export monitoring cache to GCS")
 
 
 if __name__ == "__main__":
