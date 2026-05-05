@@ -1,8 +1,10 @@
 """
 Shared styles and utilities — BTC Feature Store
 """
-
-import os 
+import json
+import os
+import streamlit as st
+from datetime import datetime, timezone
 
 GLOBAL_CSS = """
 <style>
@@ -158,12 +160,10 @@ div[data-testid="stExpander"] {
 
 
 def inject_css() -> None:
-    import streamlit as st
     st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 
 def hero(eyebrow: str, title: str, subtitle: str) -> None:
-    import streamlit as st
     st.markdown(
         '<div class="hero-box">'
         '<div style="font-size:0.8rem;font-weight:800;letter-spacing:0.10em;text-transform:uppercase;opacity:0.82;margin-bottom:0.4rem;">' + eyebrow + '</div>'
@@ -175,7 +175,6 @@ def hero(eyebrow: str, title: str, subtitle: str) -> None:
 
 
 def section_banner(index: str, title: str, description: str) -> None:
-    import streamlit as st
     st.markdown(
         '<div class="section-box">'
         '<div style="font-size:0.8rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#2563eb;margin-bottom:0.25rem;">Section ' + index + '</div>'
@@ -187,7 +186,7 @@ def section_banner(index: str, title: str, description: str) -> None:
 
 
 def fmt_ts(ts) -> str:
-    from datetime import datetime, timezone
+
     if ts is None:
         return "—"
     if isinstance(ts, (int, float)):
@@ -225,7 +224,6 @@ def badge_html(status: str) -> str:
 
 
 def sidebar_header(project_id: str = "") -> None:
-    import streamlit as st
     st.markdown(
         '<div style="font-size:0.7rem;font-weight:800;letter-spacing:0.12em;'
         'text-transform:uppercase;color:#2563eb;margin-bottom:1rem;">BTC Feature Store</div>',
@@ -244,19 +242,58 @@ def sidebar_header(project_id: str = "") -> None:
             unsafe_allow_html=True,
         )
 
-def get_bq_client():
-    import streamlit as st
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
+#================
+# GCS Cache fetch
+#================
 
-    if "gcp_service_account" in st.secrets:
-        creds = service_account.Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=["https://www.googleapis.com/auth/cloud-platform"],
-        )
-        return bigquery.Client(
-            project=st.secrets["GCP_PROJECT_ID"],
-            credentials=creds,
-        )
-    # Fallback local : ADC
-    return bigquery.Client(project=st.secrets.get("GCP_PROJECT_ID", os.getenv("GCP_PROJECT_ID", "")))
+CACHE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _local_cache_path() -> str:
+    return os.path.join(CACHE_DIR, ".cache_gcs_latest.json")
+
+
+def _save_local(data: dict) -> None:
+    with open(_local_cache_path(), "w", encoding="utf-8") as f:
+        json.dump(data, f, default=str, indent=2)
+
+
+def _load_local() -> dict | None:
+    p = _local_cache_path()
+    if os.path.exists(p):
+        try:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+
+def fetch_gcs_cache(force: bool = False) -> tuple[dict | None, str]:
+
+
+    gcs_url = st.secrets.get(
+        "GCS_CACHE_URL",
+        os.getenv("GCS_CACHE_URL", ""),
+    )
+
+    if not gcs_url:
+        data = _load_local()
+        return data, "local"
+
+    if force or ("_gcs_cache" not in st.session_state):
+        try:
+            import requests
+            r = requests.get(gcs_url, timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            _save_local(data)
+            st.session_state["_gcs_cache"] = data
+            st.session_state["_gcs_source"] = "live"
+        except Exception as exc:
+            data = _load_local()
+            st.session_state["_gcs_cache"] = data
+            st.session_state["_gcs_source"] = "stale"
+            st.session_state["_gcs_error"] = str(exc)
+
+    return st.session_state.get("_gcs_cache"), st.session_state.get("_gcs_source", "stale")

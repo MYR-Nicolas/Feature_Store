@@ -1,122 +1,60 @@
-"""Page 3 — Data Quality"""
-import json
+"""Page 3 — Data Quality — lit depuis GCS latest.json"""
 import os
 import sys
-from datetime import datetime, timezone
-from _style import get_bq_client
 
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _style import inject_css, hero, section_banner, fmt_ts, fmt_num, sidebar_header
+from _style import inject_css, hero, section_banner, fmt_ts, fmt_num, sidebar_header, fetch_gcs_cache
 
 st.set_page_config(page_title="Data Quality · BTC Feature Store", layout="wide")
 inject_css()
 
-CACHE_FILE = os.path.join(os.path.dirname(__file__), ".cache_dq.json")
-PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
-
-
-def _save(data: dict) -> None:
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, default=str, indent=2)
-
-
-def _load() -> dict | None:
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return None
-    return None
-
-
-def _fetch(project_id: str) -> dict | None:
-    try:
-        from google.cloud import bigquery
-        client = get_bq_client()
-        run_row = next(iter(client.query(
-            "SELECT run_id FROM `" + project_id + ".monitoring.data_quality` ORDER BY created_at DESC LIMIT 1"
-        ).result()), None)
-        if run_row is None:
-            return None
-        run_id = run_row["run_id"]
-        metric_rows = list(client.query(
-            "SELECT metric_name, metric_value, created_at FROM `" + project_id + ".monitoring.data_quality` WHERE run_id = '" + run_id + "'"
-        ).result())
-        metrics = {r["metric_name"]: r["metric_value"] for r in metric_rows}
-        created_at = str(metric_rows[0]["created_at"]) if metric_rows else None
-        hist = list(client.query(
-            "SELECT run_id, metric_name, metric_value, created_at FROM `" + project_id + ".monitoring.data_quality` "
-            "WHERE metric_name IN ('null_count','row_count','duplicate_count') ORDER BY created_at DESC LIMIT 60"
-        ).result())
-        return {
-            "run_id": run_id, "metrics": metrics, "created_at": created_at,
-            "history": [dict(h) for h in hist],
-            "_fetched_at": datetime.now(timezone.utc).isoformat(),
-        }
-    except Exception as exc:
-        return {"_error": str(exc)}
-
-
-DEMO = {
-    "run_id": "demo-run-001",
-    "metrics": {"row_count": 10080.0, "column_count": 6.0, "null_count": 0.0,
-                "duplicate_count": 0.0, "min_timestamp": 1745107200.0, "max_timestamp": 1745712000.0},
-    "created_at": "2025-04-28T08:04:32+00:00",
-    "_demo": True, "_fetched_at": "2025-04-28T08:04:32+00:00", "history": [],
+DEMO_METRICS = {
+    "row_count": 10080.0, "column_count": 6.0,
+    "null_count": 0.0, "duplicate_count": 0.0,
+    "min_timestamp": 1745107200.0, "max_timestamp": 1745712000.0,
 }
 
 #========
 # Sidebar
 #========
-
 with st.sidebar:
-    sidebar_header(PROJECT_ID)
+    sidebar_header()
     refresh_btn = st.button("↻  Rafraîchir", use_container_width=True)
     st.divider()
     st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">Seuils d\'alerte</div>', unsafe_allow_html=True)
-    null_warn   = st.number_input("Nulls — warn (≥)",     min_value=0, value=5,  step=1)
-    null_danger = st.number_input("Nulls — danger (≥)",   min_value=0, value=50, step=1)
-    dup_warn    = st.number_input("Doublons — warn (≥)",  min_value=0, value=1,  step=1)
-    dup_danger  = st.number_input("Doublons — danger (≥)",min_value=0, value=10, step=1)
+    null_warn   = st.number_input("Nulls — warn (≥)",      min_value=0, value=5,  step=1)
+    null_danger = st.number_input("Nulls — danger (≥)",    min_value=0, value=50, step=1)
+    dup_warn    = st.number_input("Doublons — warn (≥)",   min_value=0, value=1,  step=1)
+    dup_danger  = st.number_input("Doublons — danger (≥)", min_value=0, value=10, step=1)
 
 #==========
 # Load data
-#==========
+#========
 
-data: dict | None = None
-is_stale = False
+payload, source = fetch_gcs_cache(force=refresh_btn)
+
 is_demo = False
-error_msg = ""
+is_stale = False
 
-if refresh_btn or ("_dq_loaded" not in st.session_state):
-    st.session_state["_dq_loaded"] = True
-    if PROJECT_ID:
-        with st.spinner("Connexion à BigQuery…"):
-            result = _fetch(PROJECT_ID)
-        if result and "_error" not in result:
-            _save(result)
-            data = result
-        else:
-            error_msg = (result or {}).get("_error", "")
-            data = _load()
-            is_stale = True
-    else:
-        data = _load()
-        is_stale = bool(data)
+if payload is None:
+    metrics    = DEMO_METRICS
+    run_id     = "demo-run-001"
+    created_at = "2025-04-28T08:04:32+00:00"
+    fetched_at = "—"
+    is_demo    = True
+else:
+    dq_data    = payload.get("quality", {})
+    metrics    = dq_data.get("metrics", {})
+    run_id     = dq_data.get("run_id", "—")
+    created_at = fmt_ts(dq_data.get("created_at"))
+    fetched_at = fmt_ts(dq_data.get("_fetched_at") or payload.get("_exported_at"))
+    is_stale   = (source == "stale")
 
-if data is None:
-    data = DEMO
-    is_demo = True
-
-is_demo    = is_demo or data.get("_demo", False)
-metrics    = data.get("metrics", {})
-history    = data.get("history", [])
-fetched_at = fmt_ts(data.get("_fetched_at"))
-run_id     = data.get("run_id", "—")
-created_at = fmt_ts(data.get("created_at"))
+#===============
+# Unpack metrics
+#===============
 
 row_count  = int(metrics.get("row_count", 0))
 col_count  = int(metrics.get("column_count", 0))
@@ -131,10 +69,9 @@ coverage_pct = min(100.0, (row_count / (span_hours * 60)) * 100) if span_hours a
 def _color(v, w, d):
     return "c-red" if v >= d else ("c-amber" if v >= w else "c-green")
 
-#=======
+#========
 # Header
 #========
-
 hero(
     eyebrow="Monitoring · Qualité des données",
     title="Data Quality",
@@ -142,10 +79,11 @@ hero(
 )
 
 if is_demo:
-    st.markdown('<div class="stale-banner">⚡ Données de démonstration — définissez <code>GCP_PROJECT_ID</code> et cliquez sur Rafraîchir.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner">⚡ Données de démonstration — configurez <code>GCS_CACHE_URL</code> dans vos secrets et lancez le pipeline.</div>', unsafe_allow_html=True)
 elif is_stale:
-    msg_part = (" — Erreur : " + error_msg[:120]) if error_msg else ""
-    st.markdown('<div class="stale-banner">⚠ Connexion GCP indisponible — affichage des dernières données connues.' + msg_part + '</div>', unsafe_allow_html=True)
+    err = st.session_state.get("_gcs_error", "")
+    msg = (" — " + err[:100]) if err else ""
+    st.markdown('<div class="stale-banner">⚠ Cache GCS indisponible — affichage des dernières données connues.' + msg + '</div>', unsafe_allow_html=True)
 
 #================
 # Section 01 KPIs
@@ -172,7 +110,6 @@ st.markdown(
 #=============================
 # Section 02 Temporal coverage
 #=============================
-
 section_banner("02", "Couverture temporelle", "Plage et complétude de la série OHLCV 1 minute.")
 
 col_ts1, col_ts2, col_ts3 = st.columns(3)
@@ -236,25 +173,6 @@ st.markdown(
     '<div style="font-size:0.75rem;color:#94a3b8;margin-top:1rem;">Run ID : <code>' + run_id + '</code> · Calculé à ' + created_at + '</div>',
     unsafe_allow_html=True,
 )
-
-#==================
-# Section 04 Trends
-#==================
-
-if history:
-    import pandas as pd
-    section_banner("04", "Évolution dans le temps", "Tendances des métriques qualité sur les dernières runs.")
-    df_hist = pd.DataFrame(history)
-    df_hist["created_at"] = pd.to_datetime(df_hist["created_at"], utc=True)
-    for metric_name, label, color in [
-        ("row_count",       "Volume (lignes)",  "#2563eb"),
-        ("null_count",      "Valeurs nulles",   "#dc2626"),
-        ("duplicate_count", "Doublons",         "#d97706"),
-    ]:
-        df_m = df_hist[df_hist["metric_name"] == metric_name].sort_values("created_at")
-        if not df_m.empty:
-            st.line_chart(df_m.set_index("created_at")[["metric_value"]].rename(columns={"metric_value": label}), height=150, use_container_width=True, color=color)
-            st.caption("Évolution : " + label)
 
 st.divider()
 st.markdown(
