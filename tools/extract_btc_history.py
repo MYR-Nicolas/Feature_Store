@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ELT.extract import (
@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 def build_btc_history_1y():
-    end_dt = floor_to_minute(utc_now())
-    start_dt = end_dt - timedelta(days=365)
+
+    end_dt = datetime(2026, 4, 26, 23, 59, tzinfo=timezone.utc)
+    start_dt = datetime(2025, 4, 27, 0, 0, tzinfo=timezone.utc)
 
     df = extract_with_fallback(start_dt=start_dt, end_dt=end_dt)
 

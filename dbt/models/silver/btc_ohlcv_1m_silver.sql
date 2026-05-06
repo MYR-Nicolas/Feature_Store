@@ -2,7 +2,7 @@
 
 SELECT
     symbol,
-    TIMESTAMP_MILLIS(open_time) AS ts,
+    open_time AS ts,
 
     '1m' AS timeframe,
 
