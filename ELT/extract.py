@@ -124,9 +124,14 @@ def finalize_dataframe(df: pd.DataFrame, source: str, symbol: str, interval: str
     for col in ["open", "high", "low", "close", "volume"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Convert timestamps
-    df["open_time"] = pd.to_datetime(df["open_time"],unit="ms", utc=True)
-    df["close_time"] = pd.to_datetime(df["close_time"],unit="ms", utc=True)
+    # Convert timestamps — handle both ms integers (Binance) and ISO strings (Coinbase/CoinAPI)
+    def parse_ts(series):
+        if pd.api.types.is_numeric_dtype(series):
+            return pd.to_datetime(series, unit="ms", utc=True)
+        return pd.to_datetime(series, utc=True)
+
+    df["open_time"]  = parse_ts(df["open_time"])
+    df["close_time"] = parse_ts(df["close_time"])
 
     # Add metadata (important for lineage and debugging)
     df["symbol"] = symbol
