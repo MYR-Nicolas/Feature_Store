@@ -1,4 +1,4 @@
-"""Page 2 — dbt Monitoring — lit depuis GCS latest.json"""
+"""Page 2 — dbt Monitoring — reads from GCS latest.json"""
 import os
 import sys
 import plotly.graph_objects as go
@@ -6,9 +6,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _style import inject_css, hero, section_banner, fmt_ts, fmt_num, badge_html, sidebar_header, fetch_gcs_cache
+from utils._style import inject_css, hero, section_banner, fmt_ts, fmt_num, badge_html, sidebar_header, fetch_gcs_cache
 
-st.set_page_config(page_title="dbt Monitoring · BTC Feature Store", layout="wide")
+st.set_page_config(page_title="dbt Monitoring - BTC Feature Store", layout="wide")
 inject_css()
 
 DEMO_ROWS = [
@@ -38,11 +38,11 @@ DEMO_ROWS = [
 
 with st.sidebar:
     sidebar_header()
-    refresh_btn = st.button("↻  Rafraîchir", use_container_width=True)
+    refresh_btn = st.button("↻  Refresh", use_container_width=True)
     st.divider()
-    st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Filtres</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Filters</div>', unsafe_allow_html=True)
     filter_type   = st.multiselect("Type",   ["model", "test", "seed", "snapshot"], default=["model", "test"])
-    filter_status = st.multiselect("Statut", ["success", "error", "warn", "skip"],  default=["success", "error", "warn"])
+    filter_status = st.multiselect("Status", ["success", "error", "warn", "skip"],  default=["success", "error", "warn"])
 
 #==========
 # Load data
@@ -55,7 +55,7 @@ is_stale = False
 
 if payload is None:
     clean_rows = DEMO_ROWS
-    fetched_at = "—"
+    fetched_at = "-"
     is_demo = True
 else:
     dbt_data   = payload.get("dbt", {})
@@ -68,17 +68,17 @@ else:
 #========
 
 hero(
-    eyebrow="Monitoring · Transformations dbt",
+    eyebrow="Monitoring · dbt Transformations",
     title="dbt Run Results",
-    subtitle="Statuts des modèles et tests dbt — monitoring.dbt_results · Dernière sync : " + fetched_at,
+    subtitle="dbt model and test statuses - monitoring.dbt_results - Last sync: " + fetched_at,
 )
 
 if is_demo:
-    st.markdown('<div class="stale-banner">⚡ Données de démonstration — configurez <code>GCS_CACHE_URL</code> dans vos secrets et lancez le pipeline.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner">⚡ Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>', unsafe_allow_html=True)
 elif is_stale:
     err = st.session_state.get("_gcs_error", "")
     msg = (" — " + err[:100]) if err else ""
-    st.markdown('<div class="stale-banner">⚠ Cache GCS indisponible — affichage des dernières données connues.' + msg + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner">⚠ GCS cache unavailable - displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
 
 #================
 # Section 01 KPIs
@@ -93,21 +93,21 @@ total_t   = sum(r.get("execution_time") or 0 for r in clean_rows)
 run_id    = (clean_rows[0].get("run_id") or "—") if clean_rows else "—"
 created_at = fmt_ts(clean_rows[0].get("created_at") if clean_rows else None)
 
-section_banner("01", "Résumé de la run", "Vue d'ensemble des modèles et tests exécutés.")
+section_banner("01", "Run Summary", "Overview of models and tests executed.")
 
 st.markdown(
     "<div class='kpi-grid'>"
     "<div class='kpi-cell'><div class='kpi-label'>Total</div><div class='kpi-value'>" + str(total) + "</div></div>"
-    "<div class='kpi-cell'><div class='kpi-label'>Succès</div><div class='kpi-value c-green'>" + str(success_n) + "</div></div>"
-    "<div class='kpi-cell'><div class='kpi-label'>Erreurs</div><div class='kpi-value " + ("c-red" if error_n > 0 else "c-green") + "'>" + str(error_n) + "</div></div>"
-    "<div class='kpi-cell'><div class='kpi-label'>Modèles</div><div class='kpi-value c-blue'>" + str(model_n) + "</div></div>"
+    "<div class='kpi-cell'><div class='kpi-label'>Success</div><div class='kpi-value c-green'>" + str(success_n) + "</div></div>"
+    "<div class='kpi-cell'><div class='kpi-label'>Errors</div><div class='kpi-value " + ("c-red" if error_n > 0 else "c-green") + "'>" + str(error_n) + "</div></div>"
+    "<div class='kpi-cell'><div class='kpi-label'>Models</div><div class='kpi-value c-blue'>" + str(model_n) + "</div></div>"
     "<div class='kpi-cell'><div class='kpi-label'>Tests</div><div class='kpi-value'>" + str(test_n) + "</div></div>"
-    "<div class='kpi-cell'><div class='kpi-label'>Temps total</div><div class='kpi-value'>" + f"{total_t:.1f}" + "<span style='font-size:1rem;font-weight:500;color:#94a3b8;'> s</span></div></div>"
+    "<div class='kpi-cell'><div class='kpi-label'>Total Time</div><div class='kpi-value'>" + f"{total_t:.1f}" + "<span style='font-size:1rem;font-weight:500;color:#94a3b8;'> s</span></div></div>"
     "</div>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.5rem;">Run ID : <code>' + run_id + '</code> · Exécuté à ' + created_at + '</div>',
+    '<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.5rem;">Run ID: <code>' + run_id + '</code> · Executed at ' + created_at + '</div>',
     unsafe_allow_html=True,
 )
 
@@ -119,7 +119,7 @@ filtered = [r for r in clean_rows
             if (r.get("resource_type") or "").lower() in filter_type
             and (r.get("status") or "").lower() in filter_status]
 
-section_banner("02", "Résultats par ressource", "Modèles et tests filtrés par type et statut.")
+section_banner("02", "Results by Resource", "Models and tests filtered by type and status.")
 
 
 def _build_row(row: dict) -> str:
@@ -149,15 +149,15 @@ def render_group(items: list, title: str) -> None:
 
 
 if not filtered:
-    st.info("Aucun résultat correspondant aux filtres.")
+    st.info("No results matching the selected filters.")
 else:
     models = [r for r in filtered if r.get("resource_type") == "model"]
     tests  = [r for r in filtered if r.get("resource_type") == "test"]
     others = [r for r in filtered if r.get("resource_type") not in ("model", "test")]
     col_m, col_t = st.columns(2)
     with col_m:
-        render_group(models, "Modèles")
-        render_group(others, "Autres")
+        render_group(models, "Models")
+        render_group(others, "Other")
     with col_t:
         render_group(tests, "Tests")
 
@@ -168,7 +168,7 @@ else:
 model_rows_with_time = [r for r in clean_rows if r.get("resource_type") == "model" and r.get("execution_time")]
 if model_rows_with_time:
 
-    section_banner("03", "Temps d'exécution", "Durée de matérialisation par modèle dbt.")
+    section_banner("03", "Execution Time", "Materialization duration per dbt model.")
 
     sorted_rows = sorted(model_rows_with_time, key=lambda r: r["execution_time"], reverse=False)
     names  = [r.get("model_name") or "—" for r in sorted_rows]
@@ -195,7 +195,7 @@ if model_rows_with_time:
     )
 
     st.markdown(
-        "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:0.5rem;'>Durée par modèle (secondes)</div>"
+        "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:0.5rem;'>Duration per model (seconds)</div>"
         "<style>div[data-testid='stPlotlyChart']{background:#ffffff;border:1px solid #e8eaed;border-radius:14px;overflow:hidden;padding:0.4rem;}</style>",
         unsafe_allow_html=True,
     )

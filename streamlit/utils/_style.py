@@ -1,10 +1,7 @@
 """
 Shared styles and utilities — BTC Feature Store
+Charte visuelle calquée sur ML Pricing Optimization.
 """
-import json
-import os
-import streamlit as st
-from datetime import datetime, timezone
 
 GLOBAL_CSS = """
 <style>
@@ -160,10 +157,12 @@ div[data-testid="stExpander"] {
 
 
 def inject_css() -> None:
+    import streamlit as st
     st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 
 def hero(eyebrow: str, title: str, subtitle: str) -> None:
+    import streamlit as st
     st.markdown(
         '<div class="hero-box">'
         '<div style="font-size:0.8rem;font-weight:800;letter-spacing:0.10em;text-transform:uppercase;opacity:0.82;margin-bottom:0.4rem;">' + eyebrow + '</div>'
@@ -175,6 +174,7 @@ def hero(eyebrow: str, title: str, subtitle: str) -> None:
 
 
 def section_banner(index: str, title: str, description: str) -> None:
+    import streamlit as st
     st.markdown(
         '<div class="section-box">'
         '<div style="font-size:0.8rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#2563eb;margin-bottom:0.25rem;">Section ' + index + '</div>'
@@ -186,7 +186,7 @@ def section_banner(index: str, title: str, description: str) -> None:
 
 
 def fmt_ts(ts) -> str:
-
+    from datetime import datetime, timezone
     if ts is None:
         return "—"
     if isinstance(ts, (int, float)):
@@ -224,6 +224,7 @@ def badge_html(status: str) -> str:
 
 
 def sidebar_header(project_id: str = "") -> None:
+    import streamlit as st
     st.markdown(
         '<div style="font-size:0.7rem;font-weight:800;letter-spacing:0.12em;'
         'text-transform:uppercase;color:#2563eb;margin-bottom:1rem;">BTC Feature Store</div>',
@@ -242,9 +243,11 @@ def sidebar_header(project_id: str = "") -> None:
             unsafe_allow_html=True,
         )
 
-#================
-# GCS Cache fetch
-#================
+
+# ── GCS Cache fetch ───────────────────────────────────────────────────────────
+
+import json
+import os
 
 CACHE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -270,12 +273,22 @@ def _load_local() -> dict | None:
 
 
 def fetch_gcs_cache(force: bool = False) -> tuple[dict | None, str]:
+    """
+    Charge le payload monitoring depuis GCS (URL publique).
+    Retourne (data, source_label).
+    - Si GCS OK → sauvegarde local + retourne données fraîches
+    - Si GCS KO → retourne cache local avec bandeau stale
+    - Si rien  → retourne None (demo mode dans chaque page)
+    """
+    import streamlit as st
 
-
-    gcs_url = st.secrets.get(
-        "GCS_CACHE_URL",
-        os.getenv("GCS_CACHE_URL", ""),
-    )
+    # En local sans secrets.toml, st.secrets.get() lève une exception
+    # → on lit d'abord os.getenv, puis st.secrets si disponible
+    gcs_url = os.getenv("GCS_CACHE_URL", "")
+    try:
+        gcs_url = st.secrets.get("GCS_CACHE_URL", gcs_url)
+    except Exception:
+        pass
 
     if not gcs_url:
         data = _load_local()
