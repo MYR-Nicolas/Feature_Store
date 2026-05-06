@@ -125,8 +125,8 @@ def finalize_dataframe(df: pd.DataFrame, source: str, symbol: str, interval: str
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Convert timestamps
-    df["open_time"] = pd.to_datetime(df["open_time"], utc=True)
-    df["close_time"] = pd.to_datetime(df["close_time"], utc=True)
+    df["open_time"] = pd.to_datetime(df["open_time"],unit="ms", utc=True)
+    df["close_time"] = pd.to_datetime(df["close_time"],unit="ms", utc=True)
 
     # Add metadata (important for lineage and debugging)
     df["symbol"] = symbol
