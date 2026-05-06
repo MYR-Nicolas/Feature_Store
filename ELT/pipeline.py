@@ -175,7 +175,7 @@ def main() -> None:
                 logger.exception("Failed to log data quality metrics to BigQuery")
 
         # Export metrics GCS pour le dashboard Streamlit
-        bucket_name = os.getenv("GCS_BUCKET_NAME", "")
+        bucket_name = os.getenv("GCS_BUCKET_NAME_CACHE", "")
         if bucket_name:
             try:
                 export_monitoring_cache(
