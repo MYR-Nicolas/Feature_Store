@@ -127,7 +127,7 @@ def finalize_dataframe(df: pd.DataFrame, source: str, symbol: str, interval: str
     df["interval"] = interval
     df["source"] = source
   
-    df["extracted_at"] = pd.Timestamp.now(tz="UTC").astype("datetime64[us, UTC]") 
+    df["extracted_at"] = pd.Timestamp.now(tz="UTC").floor("us")
 
     df = df[COMMON_COLUMNS]
     df = df.sort_values("open_time").drop_duplicates("open_time")
