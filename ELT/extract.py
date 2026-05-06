@@ -108,38 +108,27 @@ COMMON_COLUMNS = [
 
 
 def finalize_dataframe(df: pd.DataFrame, source: str, symbol: str, interval: str) -> pd.DataFrame:
-    """
-    Standardize all sources into a unified schema.
-    
-    Critical for:
-    - Feature Store consistency
-    - Model reproducibility
-    - Pipeline modularity
-    """
 
     if df is None or df.empty:
         return pd.DataFrame(columns=COMMON_COLUMNS)
 
-    # Convert numeric columns
     for col in ["open", "high", "low", "close", "volume"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Convert timestamps — handle both ms integers (Binance) and ISO strings (Coinbase/CoinAPI)
     def parse_ts(series):
         if pd.api.types.is_numeric_dtype(series):
-            return pd.to_datetime(series, unit="ms", utc=True)
-        return pd.to_datetime(series, utc=True)
+            return pd.to_datetime(series, unit="ms", utc=True).astype("datetime64[us, UTC]")
+        return pd.to_datetime(series, utc=True).astype("datetime64[us, UTC]")
 
     df["open_time"]  = parse_ts(df["open_time"])
     df["close_time"] = parse_ts(df["close_time"])
 
-    # Add metadata (important for lineage and debugging)
     df["symbol"] = symbol
     df["interval"] = interval
     df["source"] = source
-    df["extracted_at"] = pd.Timestamp.now(tz="UTC")
+  
+    df["extracted_at"] = pd.Timestamp.now(tz="UTC").astype("datetime64[us, UTC]") 
 
-    # Final cleaning
     df = df[COMMON_COLUMNS]
     df = df.sort_values("open_time").drop_duplicates("open_time")
 
