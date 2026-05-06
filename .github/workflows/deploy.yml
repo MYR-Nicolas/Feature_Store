@@ -68,13 +68,13 @@ jobs:
         env:
           RAW_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           RAW_GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
-          RAW_GCS_URI: ${{ vars.GCS_URI }}
+          RAW_GCS_URI: ${{ secrets.GCS_URI }}
           RAW_GCP_LOCATION: ${{ vars.GCP_LOCATION }}
           RAW_GCS_PREFIX: ${{ vars.GCS_PREFIX }}
           RAW_BQ_CONNECTION_ID: ${{ vars.BQ_CONNECTION_ID }}
           RAW_BQ_TABLE_NAME: ${{ vars.BQ_TABLE_NAME }}
           RAW_BQ_DATASET: ${{ vars.BQ_DATASET }}
-          RAW_GCS_BUCKET_NAME_CACHE: ${{ vars.GCS_BUCKET_NAME_CACHE }}
+          RAW_GCS_BUCKET_NAME_CACHE: ${{ secrets.GCS_BUCKET_NAME_CACHE }}
         run: |
           clean() {
             printf '%s' "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
