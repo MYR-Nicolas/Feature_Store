@@ -68,12 +68,13 @@ jobs:
         env:
           RAW_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           RAW_GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
-          RAW_GCS_URI: ${{ secrets.GCS_URI }}
+          RAW_GCS_URI: ${{ vars.GCS_URI }}
           RAW_GCP_LOCATION: ${{ vars.GCP_LOCATION }}
           RAW_GCS_PREFIX: ${{ vars.GCS_PREFIX }}
           RAW_BQ_CONNECTION_ID: ${{ vars.BQ_CONNECTION_ID }}
           RAW_BQ_TABLE_NAME: ${{ vars.BQ_TABLE_NAME }}
           RAW_BQ_DATASET: ${{ vars.BQ_DATASET }}
+          RAW_GCS_BUCKET_NAME_CACHE: ${{ vars.GCS_BUCKET_NAME_CACHE }}
         run: |
           clean() {
             printf '%s' "$1" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
@@ -87,6 +88,7 @@ jobs:
           BQ_CONNECTION_ID="$(clean "$RAW_BQ_CONNECTION_ID")"
           BQ_TABLE_NAME="$(clean "$RAW_BQ_TABLE_NAME")"
           BQ_DATASET="$(clean "$RAW_BQ_DATASET")"
+          GCS_BUCKET_NAME_CACHE="$(clean "$RAW_GCS_BUCKET_NAME_CACHE")"
 
           [ -n "$GCP_PROJECT_ID" ] || exit 1
           [ -n "$GCS_BUCKET_NAME" ] || exit 1
@@ -96,6 +98,7 @@ jobs:
           [ -n "$BQ_CONNECTION_ID" ] || exit 1
           [ -n "$BQ_TABLE_NAME" ] || exit 1
           [ -n "$BQ_DATASET" ] || exit 1
+          [ -n "$GCS_BUCKET_NAME_CACHE" ] || exit 1
 
           [[ "$GCP_PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || exit 1
 
@@ -108,6 +111,7 @@ jobs:
             printf 'BQ_CONNECTION_ID=%s\n' "$BQ_CONNECTION_ID"
             printf 'BQ_TABLE_NAME=%s\n' "$BQ_TABLE_NAME"
             printf 'BQ_DATASET=%s\n' "$BQ_DATASET"
+            printf 'GCS_BUCKET_NAME_CACHE=%s\n' "$GCS_BUCKET_NAME_CACHE"
           } >> "$GITHUB_ENV"
 
       - name: Authenticate to GCP
@@ -150,6 +154,9 @@ jobs:
           GITHUB_SHA: "$GITHUB_SHA"
           IMAGE_URI: "$IMAGE_URI"
           EOF
+
+      - name: Debug env file
+        run: cat cloud-run-job-env.yaml
 
       - name: Update Cloud Run Job
         run: |
