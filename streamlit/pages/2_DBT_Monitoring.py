@@ -38,7 +38,7 @@ DEMO_ROWS = [
 
 with st.sidebar:
     sidebar_header()
-    refresh_btn = st.button("↻  Refresh", use_container_width=True)
+    refresh_btn = st.button("↻  Refresh", width='stretch')
     st.divider()
     st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Filters</div>', unsafe_allow_html=True)
     filter_type   = st.multiselect("Type",   ["model", "test", "seed", "snapshot"], default=["model", "test"])
@@ -78,7 +78,7 @@ if is_demo:
 elif is_stale:
     err = st.session_state.get("_gcs_error", "")
     msg = (" — " + err[:100]) if err else ""
-    st.markdown('<div class="stale-banner">⚠ GCS cache unavailable - displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner"> GCS cache unavailable - displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
 
 #================
 # Section 01 KPIs
@@ -199,4 +199,4 @@ if model_rows_with_time:
         "<style>div[data-testid='stPlotlyChart']{background:#ffffff;border:1px solid #e8eaed;border-radius:14px;overflow:hidden;padding:0.4rem;}</style>",
         unsafe_allow_html=True,
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})

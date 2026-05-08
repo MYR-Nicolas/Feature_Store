@@ -37,7 +37,7 @@ DEMO = {
 
 with st.sidebar:
     sidebar_header()
-    refresh_btn = st.button("↻  Refresh", use_container_width=True)
+    refresh_btn = st.button("Refresh", width='stretch')
 
 #==========
 # Load data
@@ -62,21 +62,21 @@ else:
 fetched_at = fmt_ts(data.get("_fetched_at") or (payload or {}).get("_exported_at"))
 
 hero(
-    eyebrow="Monitoring · ELT Pipeline",
+    eyebrow="Monitoring - ELT Pipeline",
     title="Pipeline Runs",
     subtitle="BTC OHLCV 1m pipeline executions - monitoring.pipeline_runs - Last sync: " + fetched_at,
 )
 
 if is_demo:
     st.markdown(
-        '<div class="stale-banner">⚡ Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>',
+        '<div class="stale-banner">Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>',
         unsafe_allow_html=True,
     )
 elif is_stale:
     err = st.session_state.get("_gcs_error", "")
     msg = (" — " + err[:100]) if err else ""
     st.markdown(
-        '<div class="stale-banner">⚠ GCS cache unavailable - displaying last known data.' + msg + '</div>',
+        '<div class="stale-banner">GCS cache unavailable - displaying last known data.' + msg + '</div>',
         unsafe_allow_html=True,
     )
 
@@ -97,8 +97,6 @@ success_runs = sum(1 for h in history if (h.get("status") or "").lower() == "suc
 success_rate = round(success_runs / total_runs * 100) if total_runs else 0
 rate_color = "c-green" if success_rate >= 90 else "c-amber"
 dur_str = f"{dur:.1f}" if dur else "—"
-
-section_banner("01", "Latest Run Summary", "Status, performance and load integrity.")
 
 st.markdown(
     "<div class='kpi-grid'>"
@@ -149,7 +147,7 @@ with col_right:
             "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:1.1rem;padding-bottom:0.6rem;border-bottom:1px solid rgba(226,232,240,0.8);'>Load Integrity</div>"
             "<div style='text-align:center;margin-bottom:1.2rem;'>"
             "<div style='font-size:3rem;font-weight:800;color:" + fill_color + ";letter-spacing:-0.04em;line-height:1;'>" + f"{match_pct:.1f}" + "<span style='font-size:1.4rem;font-weight:600;'>%</span></div>"
-            "<div style='font-size:0.78rem;color:#64748b;margin-top:0.3rem;'>Extraction → Load</div></div>"
+            "<div style='font-size:0.78rem;color:#64748b;margin-top:0.3rem;'>Extraction - Load</div></div>"
             "<div style='background:rgba(226,232,240,0.5);border-radius:6px;height:8px;overflow:hidden;margin-bottom:0.8rem;'>"
             "<div style='height:100%;border-radius:6px;background:" + fill_color + ";width:" + f"{min(match_pct,100):.1f}%" + ";'></div></div>"
             "<div style='display:flex;justify-content:space-between;font-size:0.8rem;'>"
@@ -165,43 +163,86 @@ with col_right:
 if history:
 
     section_banner("03", "Run History", "Execution duration trend over the last 20 runs.")
+
     df = pd.DataFrame(history)
     df["started_at"] = pd.to_datetime(df["started_at"], utc=True)
-    df = df.sort_values("started_at")
+    df = df.sort_values("started_at").reset_index(drop=True)
+
+    df["label"] = df["started_at"].dt.strftime("%b %d")
 
     avg_dur = df["duration_seconds"].mean()
     max_dur = df["duration_seconds"].max()
     failed = total_runs - success_runs
 
+    # Color each marker by status
+    marker_colors = [
+        "#059669" if (h.get("status") or "").lower() == "success" else "#dc2626"
+        for h in sorted(history, key=lambda h: h["started_at"])
+    ]
+
     col_chart, col_stat = st.columns([3, 1])
+
     with col_chart:
         fig = go.Figure()
+
+        # Shaded area under the line
         fig.add_trace(go.Scatter(
-            x=df["started_at"], y=df["duration_seconds"],
+            x=df["label"],
+            y=df["duration_seconds"],
             mode="lines+markers",
-            line=dict(color="#2563eb", width=2.5, shape="spline"),
-            marker=dict(size=6, color="#2563eb", line=dict(color="#ffffff", width=1.5)),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.07)",
-            hovertemplate="<b>%{x|%Y-%m-%d}</b><br>Duration: %{y:.1f} s<extra></extra>",
+            line=dict(color="#2563eb", width=2.5, shape="linear"),
+            marker=dict(
+                size=8,
+                color=marker_colors,
+                line=dict(color="#ffffff", width=1.5),
+            ),
+            fill="tozeroy",
+            fillcolor="rgba(37,99,235,0.07)",
+            hovertemplate="<b>%{x}</b><br>Duration: %{y:.1f} s<extra></extra>",
         ))
+
         fig.update_layout(
-            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-            margin=dict(l=10, r=20, t=10, b=10), height=210,
-            xaxis=dict(title=dict(text="Execution Date", font=dict(size=11, color="#94a3b8")),
-                       showgrid=True, gridcolor="rgba(226,232,240,0.8)", zeroline=False, showline=False,
-                       tickfont=dict(size=10, color="#94a3b8"), tickformat="%d %b"),
-            yaxis=dict(title=dict(text="Duration (seconds)", font=dict(size=11, color="#94a3b8")),
-                       showgrid=True, gridcolor="rgba(226,232,240,0.8)", zeroline=False, showline=False,
-                       tickfont=dict(size=10, color="#94a3b8")),
-            font=dict(family="Inter, sans-serif"), showlegend=False,
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
+            margin=dict(l=10, r=20, t=10, b=10),
+            height=230,
+            xaxis=dict(
+                type="category",          # treat labels as discrete — no time interpolation
+                title=dict(text="Execution Date", font=dict(size=11, color="#94a3b8")),
+                showgrid=True,
+                gridcolor="rgba(226,232,240,0.8)",
+                zeroline=False,
+                showline=False,
+                tickfont=dict(size=10, color="#94a3b8"),
+                tickangle=-30,
+            ),
+            yaxis=dict(
+                title=dict(text="Duration (s)", font=dict(size=11, color="#94a3b8")),
+                showgrid=True,
+                gridcolor="rgba(226,232,240,0.8)",
+                zeroline=False,
+                showline=False,
+                tickfont=dict(size=10, color="#94a3b8"),
+                rangemode="tozero",
+            ),
+            font=dict(family="Inter, sans-serif"),
+            showlegend=False,
         )
+
         st.markdown(
-            "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:#94a3b8;margin-bottom:0.5rem;'>"
-            "Execution duration per run — last 20 runs</div>"
-            "<style>div[data-testid='stPlotlyChart']{background:#ffffff;border:1px solid #e8eaed;border-radius:14px;overflow:hidden;padding:0.4rem;}</style>",
+            "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;"
+            "text-transform:uppercase;color:#94a3b8;margin-bottom:0.5rem;'>"
+            "Execution duration per run — last 20 runs"
+            "<span style='margin-left:1rem;font-size:0.65rem;font-weight:500;'>"
+            "<span style='color:#059669;'>&#9679;</span> success &nbsp;"
+            "<span style='color:#dc2626;'>&#9679;</span> failed"
+            "</span></div>"
+            "<style>div[data-testid='stPlotlyChart']{"
+            "background:#ffffff;border:1px solid #e8eaed;border-radius:14px;"
+            "overflow:hidden;padding:0.4rem;}</style>",
             unsafe_allow_html=True,
         )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
     with col_stat:
         st.markdown(

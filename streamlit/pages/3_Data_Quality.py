@@ -21,7 +21,7 @@ DEMO_METRICS = {
 #========
 with st.sidebar:
     sidebar_header()
-    refresh_btn = st.button("↻  Refresh", use_container_width=True)
+    refresh_btn = st.button("↻  Refresh", width='stretch')
     st.divider()
     st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">Alert Thresholds</div>', unsafe_allow_html=True)
     null_warn   = st.number_input("Nulls — warn (≥)",       min_value=0, value=5,  step=1)
@@ -79,11 +79,11 @@ hero(
 )
 
 if is_demo:
-    st.markdown('<div class="stale-banner">⚡ Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner"> Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>', unsafe_allow_html=True)
 elif is_stale:
     err = st.session_state.get("_gcs_error", "")
     msg = (" — " + err[:100]) if err else ""
-    st.markdown('<div class="stale-banner">⚠ GCS cache unavailable — displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner"> GCS cache unavailable — displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
 
 #================
 # Section 01 KPIs
