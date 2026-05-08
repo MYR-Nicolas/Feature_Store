@@ -73,7 +73,7 @@ def _color(v, w, d):
 # Header
 #========
 hero(
-    eyebrow="Monitoring · Data Quality",
+    eyebrow="Monitoring - Data Quality",
     title="Data Quality",
     subtitle="BTC OHLCV 1m structural validations - monitoring.data_quality - Last sync: " + fetched_at,
 )
@@ -93,7 +93,7 @@ section_banner("01", "Structural Metrics", "Volume, schema, nulls, duplicates an
 
 null_col = _color(null_count, null_warn, null_danger)
 dup_col  = _color(dup_count, dup_warn, dup_danger)
-cov_val  = f"{coverage_pct:.1f}" if coverage_pct is not None else "—"
+cov_val  = f"{coverage_pct:.1f}" if coverage_pct is not None else "Na"
 cov_col  = ("c-green" if (coverage_pct or 0) >= 95 else "c-amber" if (coverage_pct or 0) >= 80 else "c-red") if coverage_pct is not None else ""
 
 st.markdown(
@@ -113,9 +113,9 @@ st.markdown(
 section_banner("02", "Temporal Coverage", "Range and completeness of the 1-minute OHLCV series.")
 
 col_ts1, col_ts2, col_ts3 = st.columns(3)
-col_ts1.metric("Min Timestamp", fmt_ts(min_ts) if min_ts else "—")
-col_ts2.metric("Max Timestamp", fmt_ts(max_ts) if max_ts else "—")
-col_ts3.metric("Range", f"{span_hours:.0f} h · {span_hours/24:.1f} d" if span_hours else "—")
+col_ts1.metric("Min Timestamp", fmt_ts(min_ts) if min_ts else "Na")
+col_ts2.metric("Max Timestamp", fmt_ts(max_ts) if max_ts else "Na")
+col_ts3.metric("Range", f"{span_hours:.0f} h · {span_hours/24:.1f} d" if span_hours else "Na")
 
 if coverage_pct is not None:
     fill_color = "#059669" if coverage_pct >= 95 else ("#d97706" if coverage_pct >= 80 else "#dc2626")
@@ -127,7 +127,7 @@ if coverage_pct is not None:
         "<div class='prog-wrap' style='height:8px;'><div class='prog-fill' style='width:" + f"{min(coverage_pct,100):.1f}%" + ";background:" + fill_color + ";'></div></div>"
         "<div style='display:flex;justify-content:space-between;font-size:0.72rem;color:#94a3b8;margin-top:0.3rem;'>"
         "<span>" + fmt_num(row_count) + " rows present</span>"
-        "<span>" + (fmt_num(int(span_hours * 60)) if span_hours else "—") + " expected</span></div></div>",
+        "<span>" + (fmt_num(int(span_hours * 60)) if span_hours else "-") + " expected</span></div></div>",
         unsafe_allow_html=True,
     )
 
@@ -155,11 +155,11 @@ def _check_row_html(is_ok, is_warn_ok, label, detail):
 
 
 checks = [
-    (null_count == 0,        null_count < null_warn,  "Null Values",   (fmt_num(null_count) + " null(s) detected") if null_count > 0 else "No null values — OK"),
-    (dup_count == 0,         dup_count < dup_warn,    "Duplicates",    (fmt_num(dup_count) + " duplicate(s) detected") if dup_count > 0 else "No duplicates — OK"),
-    (row_count > 1000,       row_count > 100,         "Volume",        fmt_num(row_count) + " rows — " + ("sufficient" if row_count > 1000 else "low volume")),
-    (col_count >= 5,         col_count >= 4,          "Schema",        str(col_count) + " columns — " + ("complete OHLCV" if col_count >= 5 else "missing columns")),
-    ((coverage_pct or 0) >= 95, (coverage_pct or 0) >= 80, "1m Coverage", cov_val + "% — " + ("continuous series" if (coverage_pct or 0) >= 95 else "potential gaps")),
+    (null_count == 0,        null_count < null_warn,  "Null Values",   (fmt_num(null_count) + " null(s) detected") if null_count > 0 else "No null values : OK"),
+    (dup_count == 0,         dup_count < dup_warn,    "Duplicates",    (fmt_num(dup_count) + " duplicate(s) detected") if dup_count > 0 else "No duplicates : OK"),
+    (row_count > 1000,       row_count > 100,         "Volume",        fmt_num(row_count) + " rows : " + ("sufficient" if row_count > 1000 else "low volume")),
+    (col_count >= 5,         col_count >= 4,          "Schema",        str(col_count) + " columns : " + ("complete OHLCV" if col_count >= 5 else "missing columns")),
+    ((coverage_pct or 0) >= 95, (coverage_pct or 0) >= 80, "1m Coverage", cov_val + "% : " + ("continuous series" if (coverage_pct or 0) >= 95 else "potential gaps")),
 ]
 
 checks_html = "".join(_check_row_html(*c) for c in checks)

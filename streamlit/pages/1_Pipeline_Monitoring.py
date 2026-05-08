@@ -37,7 +37,7 @@ DEMO = {
 
 with st.sidebar:
     sidebar_header()
-    refresh_btn = st.button("Refresh", width='stretch')
+    refresh_btn = st.button("Refresh", use_container_width=True)
 
 #==========
 # Load data
@@ -162,87 +162,103 @@ with col_right:
 #===================
 if history:
 
-    section_banner("03", "Run History", "Execution duration trend over the last 20 runs.")
+    section_banner("03", "Run History", "Daily run counts — success vs failed.")
 
     df = pd.DataFrame(history)
     df["started_at"] = pd.to_datetime(df["started_at"], utc=True)
-    df = df.sort_values("started_at").reset_index(drop=True)
+    df["day"] = df["started_at"].dt.strftime("%b %d")
+    df["status_norm"] = df["status"].str.lower().fillna("unknown")
 
-    df["label"] = df["started_at"].dt.strftime("%b %d")
+    # Aggregate counts per day per status
+    agg = (
+        df.groupby(["day", "status_norm"])
+        .size()
+        .reset_index(name="count")
+    )
+
+    # Preserve chronological order of days
+    day_order = df.sort_values("started_at")["day"].unique().tolist()
+
+    success_by_day = agg[agg["status_norm"] == "success"].set_index("day")["count"]
+    failed_by_day  = agg[agg["status_norm"] == "failed"].set_index("day")["count"]
+
+    y_success = [int(success_by_day.get(d, 0)) for d in day_order]
+    y_failed  = [int(failed_by_day.get(d, 0))  for d in day_order]
 
     avg_dur = df["duration_seconds"].mean()
     max_dur = df["duration_seconds"].max()
-    failed = total_runs - success_runs
-
-    # Color each marker by status
-    marker_colors = [
-        "#059669" if (h.get("status") or "").lower() == "success" else "#dc2626"
-        for h in sorted(history, key=lambda h: h["started_at"])
-    ]
+    failed  = total_runs - success_runs
 
     col_chart, col_stat = st.columns([3, 1])
 
     with col_chart:
         fig = go.Figure()
 
-        # Shaded area under the line
-        fig.add_trace(go.Scatter(
-            x=df["label"],
-            y=df["duration_seconds"],
-            mode="lines+markers",
-            line=dict(color="#2563eb", width=2.5, shape="linear"),
-            marker=dict(
-                size=8,
-                color=marker_colors,
-                line=dict(color="#ffffff", width=1.5),
-            ),
-            fill="tozeroy",
-            fillcolor="rgba(37,99,235,0.07)",
-            hovertemplate="<b>%{x}</b><br>Duration: %{y:.1f} s<extra></extra>",
+        fig.add_trace(go.Bar(
+            name="Success",
+            x=day_order,
+            y=y_success,
+            marker_color="#00f5a0",
+            marker_line_width=0,
+            hovertemplate="<b>%{x}</b><br>Success: %{y}<extra></extra>",
+        ))
+
+        fig.add_trace(go.Bar(
+            name="Failed",
+            x=day_order,
+            y=y_failed,
+            marker_color="#ff2d55",
+            marker_line_width=0,
+            hovertemplate="<b>%{x}</b><br>Failed: %{y}<extra></extra>",
         ))
 
         fig.update_layout(
+            barmode="group",
+            bargap=0.25,
+            bargroupgap=0.08,
             plot_bgcolor="#ffffff",
             paper_bgcolor="#ffffff",
             margin=dict(l=10, r=20, t=10, b=10),
             height=230,
             xaxis=dict(
-                type="category",          # treat labels as discrete — no time interpolation
+                type="category",
                 title=dict(text="Execution Date", font=dict(size=11, color="#94a3b8")),
-                showgrid=True,
-                gridcolor="rgba(226,232,240,0.8)",
+                showgrid=False,
                 zeroline=False,
                 showline=False,
                 tickfont=dict(size=10, color="#94a3b8"),
                 tickangle=-30,
             ),
             yaxis=dict(
-                title=dict(text="Duration (s)", font=dict(size=11, color="#94a3b8")),
+                title=dict(text="Run count", font=dict(size=11, color="#94a3b8")),
                 showgrid=True,
                 gridcolor="rgba(226,232,240,0.8)",
                 zeroline=False,
                 showline=False,
                 tickfont=dict(size=10, color="#94a3b8"),
                 rangemode="tozero",
+                dtick=1,
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", y=1.02,
+                xanchor="right",  x=1,
+                font=dict(size=10, color="#64748b"),
             ),
             font=dict(family="Inter, sans-serif"),
-            showlegend=False,
         )
 
         st.markdown(
             "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.10em;"
             "text-transform:uppercase;color:#94a3b8;margin-bottom:0.5rem;'>"
-            "Execution duration per run — last 20 runs"
-            "<span style='margin-left:1rem;font-size:0.65rem;font-weight:500;'>"
-            "<span style='color:#059669;'>&#9679;</span> success &nbsp;"
-            "<span style='color:#dc2626;'>&#9679;</span> failed"
-            "</span></div>"
+            "Daily runs — success vs failed"
+            "</div>"
             "<style>div[data-testid='stPlotlyChart']{"
             "background:#ffffff;border:1px solid #e8eaed;border-radius:14px;"
             "overflow:hidden;padding:0.4rem;}</style>",
             unsafe_allow_html=True,
         )
-        st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     with col_stat:
         st.markdown(
