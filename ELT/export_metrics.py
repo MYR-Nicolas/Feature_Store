@@ -1,7 +1,7 @@
 """
 ELT/export_cache.py
 Exporte les données de monitoring vers GCS après chaque run.
-Le dashboard Streamlit lit ce fichier JSON via URL publique — sans auth GCP.
+Le dashboard Streamlit lit ce fichier JSON via URL publique sans auth GCP.
 """
 
 import json
@@ -29,7 +29,7 @@ def export_monitoring_cache(
     """
     from google.cloud import bigquery, storage
 
-    # ── Récupère l'historique des 20 dernières runs depuis BQ ────────────────
+    # Récupère l'historique des 20 dernières runs depuis BQ
     history = []
     try:
         bq = bigquery.Client(project=project_id)
@@ -44,7 +44,7 @@ def export_monitoring_cache(
     except Exception:
         logger.warning("Could not fetch pipeline history from BigQuery for cache export")
 
-    # ── Récupère les résultats dbt depuis run_results.json ───────────────────
+    # Récupère les résultats dbt depuis run_results.json
     dbt_rows = []
     if dbt_run_results_path and dbt_run_results_path.exists():
         try:
@@ -52,10 +52,19 @@ def export_monitoring_cache(
                 data = json.load(f)
             for result in data.get("results", []):
                 node = result.get("unique_id", "")
+                parts = node.split(".") if node else []
+                resource_type = parts[0] if parts else None
+
+                if resource_type == "test" and len(parts) >= 3:
+                    model_name = parts[-2]
+                elif parts:
+                    model_name = parts[-1]
+                else:
+                    model_name = None
                 dbt_rows.append({
                     "run_id": run_id,
-                    "resource_type": node.split(".")[0] if node else None,
-                    "model_name": node.split(".")[-1] if node else None,
+                    "resource_type": resource_type,
+                    "model_name": model_name,
                     "status": result.get("status"),
                     "execution_time": result.get("execution_time"),
                     "message": result.get("message"),
@@ -66,7 +75,7 @@ def export_monitoring_cache(
     else:
         dbt_rows = dbt_results  # fallback si déjà parsé
 
-    # ── Construit le payload complet ─────────────────────────────────────────
+    # Construit le payload complet
     fetched_at = datetime.now(timezone.utc).isoformat()
 
     payload = {
@@ -89,7 +98,7 @@ def export_monitoring_cache(
         "_run_id": run_id,
     }
 
-    # ── Upload vers GCS ───────────────────────────────────────────────────────
+    # Upload vers GCS
     gcs = storage.Client(project=project_id)
     bucket = gcs.bucket(bucket_name)
     blob = bucket.blob(GCS_CACHE_BLOB)
