@@ -1,7 +1,7 @@
 """
 ELT/export_cache.py
 Exporte les données de monitoring vers GCS après chaque run.
-Le dashboard Streamlit lit ce fichier JSON via URL publique sans auth GCP.
+Le dashboard Streamlit lit ce fichier JSON via URL publique — sans auth GCP.
 """
 
 import json
@@ -22,6 +22,7 @@ def export_monitoring_cache(
     dbt_results: list[dict],
     quality_metrics: dict,
     dbt_run_results_path: Path | None = None,
+    dbt_run_results_run_path: Path | None = None,
 ) -> str:
     """
     Construit le payload de monitoring et l'uploade sur GCS.
@@ -29,7 +30,7 @@ def export_monitoring_cache(
     """
     from google.cloud import bigquery, storage
 
-    # Récupère l'historique des 20 dernières runs depuis BQ
+    # ── Récupère l'historique des 20 dernières runs depuis BQ ────────────────
     history = []
     try:
         bq = bigquery.Client(project=project_id)
@@ -46,22 +47,27 @@ def export_monitoring_cache(
 
     # Récupère les résultats dbt depuis run_results.json
     dbt_rows = []
-    if dbt_run_results_path and dbt_run_results_path.exists():
+
+    def _parse(path: Path | None) -> list[dict]:
+        if not path or not path.exists():
+            return []
         try:
-            with open(dbt_run_results_path, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
+            rows = []
             for result in data.get("results", []):
                 node = result.get("unique_id", "")
                 parts = node.split(".") if node else []
                 resource_type = parts[0] if parts else None
-
+                # test unique_id: test.project.test_name.hash → parts[-2]
+                # model unique_id: model.project.model_name   → parts[-1]
                 if resource_type == "test" and len(parts) >= 3:
                     model_name = parts[-2]
                 elif parts:
                     model_name = parts[-1]
                 else:
                     model_name = None
-                dbt_rows.append({
+                rows.append({
                     "run_id": run_id,
                     "resource_type": resource_type,
                     "model_name": model_name,
@@ -70,8 +76,14 @@ def export_monitoring_cache(
                     "message": result.get("message"),
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 })
+            return rows
         except Exception:
-            logger.warning("Could not parse dbt run_results.json for cache export")
+            logger.warning("Could not parse %s for cache export", path)
+            return []
+
+    if dbt_run_results_path or dbt_run_results_run_path:
+        # Merge: models from run snapshot + tests from test results
+        dbt_rows = _parse(dbt_run_results_run_path) + _parse(dbt_run_results_path)
     else:
         dbt_rows = dbt_results  # fallback si déjà parsé
 

@@ -53,6 +53,14 @@ def run_dbt_pipeline() -> None:
     logger.info("Running dbt transformations")
     run_command(["dbt", "run", "--profiles-dir", "."], DBT_DIR)
 
+    
+    run_results = DBT_DIR / "target" / "run_results.json"
+    run_results_snapshot = DBT_DIR / "target" / "run_results_run.json"
+    if run_results.exists():
+        import shutil
+        shutil.copy2(run_results, run_results_snapshot)
+        logger.info("Saved dbt run results snapshot to %s", run_results_snapshot)
+
     logger.info("Running dbt tests")
     run_command(["dbt", "test", "--profiles-dir", "."], DBT_DIR)
 
@@ -154,6 +162,7 @@ def main() -> None:
                 project_id=project_id,
                 run_id=run_id,
                 run_results_path=DBT_DIR / "target" / "run_results.json",
+                run_results_run_path=DBT_DIR / "target" / "run_results_run.json",
             )
 
             logger.info("dbt results logged to BigQuery")
@@ -196,6 +205,7 @@ def main() -> None:
                     dbt_results=[],
                     quality_metrics=metrics or {},
                     dbt_run_results_path=DBT_DIR / "target" / "run_results.json",
+                    dbt_run_results_run_path=DBT_DIR / "target" / "run_results_run.json",
                 )
                 logger.info("Monitoring cache exported to GCS")
             except Exception:
