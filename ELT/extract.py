@@ -36,14 +36,23 @@ def isoformat_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
 
-def get_default_time_window(days: Optional[int] = None) -> Tuple[datetime, datetime]:
+def get_full_week_window(reference_dt: Optional[datetime] = None) -> Tuple[datetime, datetime]:
     """
-    Default extraction window (1 week by default)
+    Return the previous complete UTC week:
+    Monday 00:00 UTC -> next Monday 00:00 UTC exclusive.
     """
-    days = days or settings.DEFAULT_DAYS
-    end_dt = floor_to_minute(utc_now())
-    start_dt = end_dt - timedelta(days=days)
-    return start_dt, end_dt
+
+    reference_dt = reference_dt or utc_now()
+    reference_dt = reference_dt.astimezone(timezone.utc)
+
+    current_monday = (
+        reference_dt
+        - timedelta(days=reference_dt.weekday())
+    ).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    previous_monday = current_monday - timedelta(days=7)
+
+    return previous_monday, current_monday
 
 
 # ==================
@@ -189,7 +198,10 @@ def extract_from_binance(start_dt=None, end_dt=None):
     -> requires loop pagination
     """
 
-    start_dt, end_dt = start_dt or get_default_time_window()[0], end_dt or get_default_time_window()[1]
+    if start_dt is None or end_dt is None:
+        default_start, default_end = get_full_week_window()
+        start_dt = start_dt or default_start
+        end_dt = end_dt or default_end
 
     start_ms = to_milliseconds(start_dt)
     end_ms = to_milliseconds(end_dt)
@@ -205,6 +217,7 @@ def extract_from_binance(start_dt=None, end_dt=None):
             "symbol": settings.SYMBOL_BINANCE,
             "interval": settings.INTERVAL,
             "startTime": current,
+            "endTime": end_ms - 1,
             "limit": 1000
         }
 
@@ -244,7 +257,10 @@ def extract_from_coinbase(start_dt=None, end_dt=None):
     -> requires time window slicing
     """
 
-    start_dt, end_dt = start_dt or get_default_time_window()[0], end_dt or get_default_time_window()[1]
+    if start_dt is None or end_dt is None:
+        default_start, default_end = get_full_week_window()
+        start_dt = start_dt or default_start
+        end_dt = end_dt or default_end
 
     url = f"{settings.COINBASE_BASE_URL}/products/{settings.SYMBOL_COINBASE}/candles"
 
@@ -253,7 +269,7 @@ def extract_from_coinbase(start_dt=None, end_dt=None):
 
     while current < end_dt:
 
-        next_time = current + timedelta(minutes=300)
+        next_time = min(current + timedelta(minutes=300), end_dt)
 
         params = {
             "start": isoformat_z(current),
@@ -285,7 +301,10 @@ def extract_from_coinapi(start_dt=None, end_dt=None):
     if not settings.COINAPI_KEY:
         raise RuntimeError("Missing COINAPI_KEY")
 
-    start_dt, end_dt = start_dt or get_default_time_window()[0], end_dt or get_default_time_window()[1]
+    if start_dt is None or end_dt is None:
+        default_start, default_end = get_full_week_window()
+        start_dt = start_dt or default_start
+        end_dt = end_dt or default_end
 
     url = f"{settings.COINAPI_BASE_URL}/v1/ohlcv/{settings.SYMBOL_COINAPI}/history"
 
@@ -328,7 +347,10 @@ def extract_with_fallback(start_dt=None, end_dt=None):
     3. CoinAPI (final fallback)
     """
 
-    start_dt, end_dt = start_dt or get_default_time_window()[0], end_dt or get_default_time_window()[1]
+    if start_dt is None or end_dt is None:
+        default_start, default_end = get_full_week_window()
+        start_dt = start_dt or default_start
+        end_dt = end_dt or default_end
 
     extractors = [
         ("binance", extract_from_binance),
@@ -341,6 +363,7 @@ def extract_with_fallback(start_dt=None, end_dt=None):
     for name, func in extractors:
         try:
             logger.info(f"Trying source={name}")
+            logger.info("Extraction window UTC: start=%s end=%s", start_dt, end_dt)
 
             df = func(start_dt=start_dt, end_dt=end_dt)
 
