@@ -130,7 +130,7 @@ def _build_pipeline_html(title, nodes):
 
 col_a, col_b, col_c = st.columns([1, 0.08, 1])
 with col_a:
-  st.markdown(_build_pipeline_html("Ingestion &amp; Transform — Data Lakehouse", left_nodes),
+  st.markdown(_build_pipeline_html("Ingestion &amp; Transform - Data Lakehouse", left_nodes),
         unsafe_allow_html=True)
 with col_c:
   st.markdown(_build_pipeline_html("Infra &amp; CI/CD", right_nodes),
@@ -210,7 +210,7 @@ with st.expander("Technical constraints"):
 - Compatibility with realistic backtesting
 """)
 
-with st.expander("Data sources & storage — Data Lakehouse architecture"):
+with st.expander("Data sources & storage - Data Lakehouse architecture"):
 
   st.markdown("""
 <div style="background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1px solid #c7d2fe;
@@ -278,19 +278,19 @@ with st.expander("Feature list (8 families - 30 features)"):
   features = [
     {
       "Family": "Returns",
-      "Features": "logret_1m - logret_5m - logret_15m - logret_60m",
+      "Features": "logret_1m, logret_5m, logret_15m and logret_60m",
       "N": 4,
-      "Role": "Multi-horizon price dynamics — momentum, acceleration, reversals",
+      "Role": "Multi-horizon price dynamics : momentum, acceleration and reversals",
     },
     {
       "Family": "Return Lags",
-      "Features": "lag_logret_1m_1 - lag_logret_1m_5 - lag_logret_1m_15 - lag_logret_1m_60",
+      "Features": "lag_logret_1m_1, lag_logret_1m_5, lag_logret_1m_15 and lag_logret_1m_60",
       "N": 4,
-      "Role": "Temporal memory — stabilizes learning in tabular models",
+      "Role": "Temporal memory stabilizes learning in tabular models",
     },
     {
       "Family": "Volatility",
-      "Features": "vol_60m - vol_1d - vol_annualized - vol_ratio",
+      "Features": "vol_60m, vol_1d, vol_annualized and vol_ratio",
       "N": 4,
       "Role": "Risk regimes: rolling std, annualized (x√525,600), short/long-term ratio",
     },
@@ -298,23 +298,23 @@ with st.expander("Feature list (8 families - 30 features)"):
       "Family": "Volume",
       "Features": "log_volume - vol_ma_60m - vol_zscore",
       "N": 3,
-      "Role": "Market activity intensity — filters moves in low-liquidity conditions",
+      "Role": "Market activity intensity : filters moves in low-liquidity conditions",
     },
     {
       "Family": "Ichimoku",
-      "Features": "tenkan - kijun - span_a - span_b",
+      "Features": "tenkan, kijun, span_a and span_b",
       "N": 4,
       "Role": "Trend structure and Ichimoku equilibrium zones (raw values)",
     },
     {
       "Family": "Ichimoku Derivatives",
-      "Features": "tenkan_dist - kijun_dist - span_a_dist - span_b_dist - cloud_thickness",
+      "Features": "tenkan_dist, kijun_dist, span_a_dist, span_b_dist and cloud_thickness",
       "N": 5,
-      "Role": "Normalized distance to price — measures tension against key levels",
+      "Role": "Normalized distance to price : measures tension against key levels",
     },
     {
       "Family": "Binary signals",
-      "Features": "tenkan_sup_kijun - price_sup_cloud - price_sub_cloud - lag_price_sup_cloud_5",
+      "Features": "tenkan_sup_kijun, price_sup_cloud, price_sub_cloud and lag_price_sup_cloud_5",
       "N": 4,
       "Role": "Explicit regime signals for non-linear models (0/1)",
     },
@@ -322,7 +322,7 @@ with st.expander("Feature list (8 families - 30 features)"):
       "Family": "Target",
       "Features": "future_logret",
       "N": 1,
-      "Role": "Temporally shifted target — leak-free alignment (supervised learning)",
+      "Role": "Temporally shifted target : leak-free alignment (supervised learning)",
     },
   ]
   df_feat = pd.DataFrame(features)
@@ -335,7 +335,7 @@ with st.expander("Feature list (8 families - 30 features)"):
     },
   )
   total = sum(f["N"] for f in features)
-  st.caption(f"Total: **{total} features** materialized in `mart.features` — versioned via `mart.feature_versions`")
+  st.caption(f"Total: **{total} features** materialized in `mart.features`  versioned via `mart.feature_versions`")
 
 with st.expander("References"):
   st.markdown("""
@@ -343,13 +343,14 @@ with st.expander("References"):
  *How to Detect Market Trends for Stocks, Cryptocurrency, and Forex by Combining Technical Analysis and the Ichimoku Cloud (2nd ed.)*
 """)
 
-
-# ─── FOOTER ──────────────────────────────────────────────────────────────────
+#=======
+# FOOTER
+#=======
 
 st.markdown("---")
 st.markdown("""
 <div style="text-align:center; font-size:0.78rem; color:#94a3b8; padding: 0.5rem 0 1rem;">
- BTC Feature Store - GCP Data Lakehouse - 
+ BTC Feature Store  GCP Data Lakehouse
  <a href="https://github.com/MYR-Nicolas/Feature_Store"style="color:#3b82f6; text-decoration:none;">
   GitHub ↗
  </a>

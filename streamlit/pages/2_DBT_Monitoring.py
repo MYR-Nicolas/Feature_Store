@@ -42,7 +42,7 @@ with st.sidebar:
     st.divider()
     st.markdown('<div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Filters</div>', unsafe_allow_html=True)
     filter_type   = st.multiselect("Type",   ["model", "test", "seed", "snapshot"], default=["model", "test"])
-    filter_status = st.multiselect("Status", ["success", "error", "warn", "skip"],  default=["success", "error", "warn"])
+    filter_status = st.multiselect("Status", ["success", "pass", "error", "fail", "warn", "skip"], default=["success", "pass", "error", "fail", "warn"])
 
 #==========
 # Load data
@@ -59,7 +59,13 @@ if payload is None:
     is_demo = True
 else:
     dbt_data   = payload.get("dbt", {})
-    clean_rows = dbt_data.get("rows", [])
+    raw_rows   = dbt_data.get("rows", [])
+    # Normalize dbt statuses: dbt uses "pass"/"fail" for tests, "success"/"error" for models
+    _status_map = {"pass": "success", "fail": "error", "failed": "error"}
+    clean_rows = [
+        {**r, "status": _status_map.get((r.get("status") or "").lower(), (r.get("status") or "").lower())}
+        for r in raw_rows
+    ]
     fetched_at = fmt_ts(dbt_data.get("_fetched_at") or payload.get("_exported_at"))
     is_stale   = (source == "stale")
 
@@ -68,17 +74,17 @@ else:
 #========
 
 hero(
-    eyebrow="Monitoring · dbt Transformations",
+    eyebrow="Monitoring - dbt Transformations",
     title="dbt Run Results",
     subtitle="dbt model and test statuses - monitoring.dbt_results - Last sync: " + fetched_at,
 )
 
 if is_demo:
-    st.markdown('<div class="stale-banner">⚡ Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner">Demo data - configure <code>GCS_CACHE_URL</code> in your secrets and run the pipeline.</div>', unsafe_allow_html=True)
 elif is_stale:
     err = st.session_state.get("_gcs_error", "")
     msg = (" — " + err[:100]) if err else ""
-    st.markdown('<div class="stale-banner"> GCS cache unavailable - displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="stale-banner">GCS cache unavailable - displaying last known data.' + msg + '</div>', unsafe_allow_html=True)
 
 #================
 # Section 01 KPIs

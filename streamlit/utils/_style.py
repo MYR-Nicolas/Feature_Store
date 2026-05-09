@@ -233,13 +233,7 @@ def sidebar_header(project_id: str = "") -> None:
     if project_id:
         st.markdown(
             '<div style="margin-top:0.5rem;font-size:0.72rem;color:#64748b;">'
-            'Projet : <code>' + project_id + '</code></div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            '<div style="margin-top:0.5rem;font-size:0.72rem;color:#dc2626;">'
-            '⚠ GCP_PROJECT_ID non défini</div>',
+            'Project: <code>' + project_id + '</code></div>',
             unsafe_allow_html=True,
         )
 
