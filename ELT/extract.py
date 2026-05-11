@@ -272,9 +272,9 @@ def extract_from_coinbase(start_dt=None, end_dt=None):
         next_time = min(current + timedelta(minutes=300), end_dt)
 
         params = {
-            "start": isoformat_z(current),
-            "end": isoformat_z(next_time),
-            "granularity": 60
+            "period_id": "1MIN",
+            "time_start": isoformat_z(start_dt),
+            "time_end": isoformat_z(end_dt - timedelta(milliseconds=1))
         }
 
         response = http_get_with_retry(url, params=params, source_name="coinbase")
