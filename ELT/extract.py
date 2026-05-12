@@ -272,9 +272,9 @@ def extract_from_coinbase(start_dt=None, end_dt=None):
         next_time = min(current + timedelta(minutes=300), end_dt)
 
         params = {
-            "period_id": "1MIN",
-            "time_start": isoformat_z(start_dt),
-            "time_end": isoformat_z(end_dt - timedelta(milliseconds=1))
+            "start": isoformat_z(current),
+            "end": isoformat_z(next_time - timedelta(milliseconds=1)),
+            "granularity": 60,
         }
 
         response = http_get_with_retry(url, params=params, source_name="coinbase")
@@ -313,7 +313,7 @@ def extract_from_coinapi(start_dt=None, end_dt=None):
     params = {
         "period_id": "1MIN",
         "time_start": isoformat_z(start_dt),
-        "time_end": isoformat_z(end_dt)
+        "time_end": isoformat_z(end_dt - timedelta(milliseconds=1)),
     }
 
     response = http_get_with_retry(url, params=params, headers=headers, source_name="coinapi")
