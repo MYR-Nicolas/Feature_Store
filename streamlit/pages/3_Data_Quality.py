@@ -63,7 +63,8 @@ dup_count  = int(metrics.get("duplicate_count", 0))
 min_ts     = metrics.get("min_timestamp")
 max_ts     = metrics.get("max_timestamp")
 span_hours = (max_ts - min_ts) / 3600 if min_ts and max_ts else None
-coverage_pct = min(100.0, (row_count / (span_hours * 60)) * 100) if span_hours and span_hours > 0 else None
+EXPECTED_ROWS_WEEKLY = 7 * 24 * 60  # 10 080 minutes
+coverage_pct = min(100.0, (row_count / EXPECTED_ROWS_WEEKLY) * 100) if row_count > 0 else None
 
 
 def _color(v, w, d):
@@ -127,7 +128,7 @@ if coverage_pct is not None:
         "<div class='prog-wrap' style='height:8px;'><div class='prog-fill' style='width:" + f"{min(coverage_pct,100):.1f}%" + ";background:" + fill_color + ";'></div></div>"
         "<div style='display:flex;justify-content:space-between;font-size:0.72rem;color:#94a3b8;margin-top:0.3rem;'>"
         "<span>" + fmt_num(row_count) + " rows present</span>"
-        "<span>" + (fmt_num(int(span_hours * 60)) if span_hours else "-") + " expected</span></div></div>",
+        "<span>" + fmt_num(EXPECTED_ROWS_WEEKLY) + " expected (7d)</span></div></div>",
         unsafe_allow_html=True,
     )
 
@@ -173,4 +174,3 @@ st.markdown(
     '<div style="font-size:0.75rem;color:#94a3b8;margin-top:1rem;">Run ID: <code>' + run_id + '</code> · Computed at ' + created_at + '</div>',
     unsafe_allow_html=True,
 )
-
