@@ -66,12 +66,11 @@ def run_dbt_pipeline() -> None:
 
 
 def build_weekly_paths() -> tuple[str, str]:
-    execution_date = datetime.now(timezone.utc).strftime("%Y%m%d")
-    filename = f"btc_1m_weekly_{execution_date}.parquet"
-
+    start_dt, _ = get_full_week_window()                    
+    week_start = start_dt.strftime("%Y%m%d")
+    filename = f"btc_1m_weekly_{week_start}.parquet"        
     local_path = f"data/weekly/{filename}"
     gcs_path = f"{settings.GCS_PREFIX}/weekly/{filename}"
-
     return local_path, gcs_path
 
 
