@@ -208,10 +208,15 @@ if model_rows_with_time:
     ))
     fig.update_layout(
         plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-        margin=dict(l=0, r=70, t=8, b=8),
+        margin=dict(l=0, r=70, t=8, b=36),
         height=max(240, len(names) * 44),
-        xaxis=dict(showgrid=True, gridcolor="rgba(226,232,240,0.8)", zeroline=False, showline=False,
-                   tickfont=dict(size=11, color="#94a3b8", family="Inter, sans-serif")),
+        xaxis=dict(
+            showgrid=True, gridcolor="rgba(226,232,240,0.8)",
+            zeroline=True, zerolinecolor="rgba(200,210,220,1)", zerolinewidth=1,
+            showline=True, linecolor="rgba(200,210,220,1)", linewidth=1,
+            showticklabels=True, ticksuffix=" s",
+            tickfont=dict(size=11, color="#64748b", family="Inter, sans-serif"),
+        ),
         yaxis=dict(showgrid=False, showline=False,
                    tickfont=dict(size=12, color="#1e293b", family="JetBrains Mono, monospace")),
         font=dict(family="Inter, sans-serif"),
