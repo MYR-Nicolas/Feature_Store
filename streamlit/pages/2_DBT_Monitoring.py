@@ -128,6 +128,9 @@ filtered = [r for r in clean_rows
 section_banner("02", "Results by Resource", "Models and tests filtered by type and status.")
 
 
+SHOW_DEFAULT = 5
+
+
 def _build_row(row: dict) -> str:
     name  = row.get("model_name") or "—"
     rtype = row.get("resource_type") or "—"
@@ -138,20 +141,34 @@ def _build_row(row: dict) -> str:
     msg_html = ('<div style="font-size:0.72rem;color:#94a3b8;margin-top:0.15rem;">' + msg + '</div>') if msg and rtype == "test" else ""
     return (
         '<div class="model-row">'
-        '<div><div class="model-type-tag">' + rtype + '</div>'
-        '<div class="model-name">' + name + '</div>' + msg_html + '</div>'
-        '<div style="display:flex;align-items:center;gap:1rem;">'
-        '<span class="model-time">' + t_str + '</span>' + badge_html(s) + '</div>'
+        '<div style="min-width:0;flex:1;">'
+        '<div class="model-type-tag">' + rtype + '</div>'
+        '<div class="model-name">' + name + '</div>' + msg_html +
+        '</div>'
+        '<div style="display:flex;align-items:center;gap:0.75rem;flex-shrink:0;">'
+        '<span class="model-time">' + t_str + '</span>' + badge_html(s) +
+        '</div>'
         '</div>'
     )
 
 
-def render_group(items: list, title: str) -> None:
+def render_group(items: list, title: str, key: str) -> None:
     if not items:
         return
-    st.markdown('<div class="sec-label">' + title + " (" + str(len(items)) + ")</div>", unsafe_allow_html=True)
-    rows_html = "".join(_build_row(r) for r in sorted(items, key=lambda x: x.get("model_name") or ""))
+    sorted_items = sorted(items, key=lambda x: x.get("model_name") or "")
+    total_items  = len(sorted_items)
+    expanded     = st.session_state.get(key, False)
+    visible      = sorted_items if expanded else sorted_items[:SHOW_DEFAULT]
+
+    st.markdown('<div class="sec-label">' + title + " (" + str(total_items) + ")</div>", unsafe_allow_html=True)
+    rows_html = "".join(_build_row(r) for r in visible)
     st.markdown('<div class="model-row-wrap">' + rows_html + '</div>', unsafe_allow_html=True)
+
+    if total_items > SHOW_DEFAULT:
+        label = f"▲ Show less" if expanded else f"▼ Show all {total_items}"
+        if st.button(label, key=key + "_btn"):
+            st.session_state[key] = not expanded
+            st.rerun()
 
 
 if not filtered:
@@ -162,10 +179,10 @@ else:
     others = [r for r in filtered if r.get("resource_type") not in ("model", "test")]
     col_m, col_t = st.columns(2)
     with col_m:
-        render_group(models, "Models")
-        render_group(others, "Other")
+        render_group(models, "Models", "expand_models")
+        render_group(others, "Other",  "expand_others")
     with col_t:
-        render_group(tests, "Tests")
+        render_group(tests, "Tests", "expand_tests")
 
 #===========================
 # Section 03 Exec time chart
