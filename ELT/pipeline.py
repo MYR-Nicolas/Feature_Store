@@ -14,6 +14,7 @@ from ELT.monitoring import insert_pipeline_run
 from ELT.dbt_monitoring import insert_dbt_results
 from ELT.monitoring_data_quality import compute_quality_metrics, insert_quality_metrics
 from ELT.export_metrics import export_monitoring_cache
+from ELT.extract import extract_with_fallback, get_full_week_window
 
 
 logging.basicConfig(level=logging.INFO)
