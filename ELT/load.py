@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+
 import pandas as pd
 from google.cloud import storage
 
@@ -13,15 +14,14 @@ def save_to_parquet(
     local_path: str,
 ) -> str:
     """
-    Save a pandas DataFrame to a local Parquet file.
+    Save a DataFrame to a local Parquet file.
 
     Args:
-        df (pd.DataFrame): DataFrame to save.
-        local_path (str): Local filesystem path where the file will be written.
+        df: DataFrame to save.
+        local_path: Local file path for the Parquet file.
 
     Returns:
-        str: Path to the saved Parquet file.
-
+        Path to the saved Parquet file.
     """
     local_path = Path(local_path)
     local_path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,6 +34,7 @@ def save_to_parquet(
     )
 
     logger.info("Parquet file saved locally: %s", local_path)
+
     return str(local_path)
 
 
@@ -46,13 +47,12 @@ def upload_to_gcs(
     Upload a local file to Google Cloud Storage.
 
     Args:
-        local_path (str): Path to the local file.
-        gcs_path (str): Destination path inside the GCS bucket.
-        bucket_name (str | None): GCS bucket name. Defaults to settings.GCS_BUCKET_NAME.
+        local_path: Path to the local file.
+        gcs_path: Destination path inside the GCS bucket.
+        bucket_name: Optional GCS bucket name.
 
     Returns:
-        str: Full GCS URI of the uploaded file.
-
+        Full GCS URI of the uploaded file.
     """
     bucket_name = bucket_name or settings.GCS_BUCKET_NAME
 
@@ -63,6 +63,7 @@ def upload_to_gcs(
     blob.upload_from_filename(local_path)
 
     gcs_uri = f"gs://{bucket_name}/{gcs_path}"
+
     logger.info("Uploaded to GCS: %s", gcs_uri)
 
     return gcs_uri
@@ -75,18 +76,17 @@ def load_df_to_gcs(
     bucket_name: str | None = None,
 ) -> str:
     """
-    Save a DataFrame as Parquet and upload it to Google Cloud Storage.
-
+    Save a DataFrame as Parquet and upload it to GCS.
 
     Args:
-        df (pd.DataFrame): DataFrame to persist.
-        local_path (str): Local path for temporary Parquet file.
-        gcs_path (str): Target path in GCS bucket.
-        bucket_name (str : None): GCS bucket name.
+        df: DataFrame to save and upload.
+        local_path: Local temporary Parquet file path.
+        gcs_path: Destination path inside the GCS bucket.
+        bucket_name: Optional GCS bucket name.
 
     Returns:
-        str: GCS URI of the uploaded file.
-
+        GCS URI of the uploaded file.
     """
     local_file = save_to_parquet(df, local_path)
+
     return upload_to_gcs(local_file, gcs_path, bucket_name)

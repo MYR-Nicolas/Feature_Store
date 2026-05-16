@@ -6,12 +6,24 @@ from google.cloud import bigquery
 
 
 def _parse_run_results(path: Path, run_id: str) -> list[dict]:
-    """Parse a dbt run_results.json and return normalized rows."""
+    """
+    Parse a dbt run_results.json file into normalized rows.
+
+    Args:
+        path: Path to the dbt run_results.json file.
+        run_id: Unique pipeline execution identifier.
+
+    Returns:
+        A list of normalized dictionaries ready for BigQuery insertion.
+    """
     if not path or not path.exists():
         return []
+
     rows = []
+
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
     for result in data.get("results", []):
         node = result.get("unique_id", "")
         parts = node.split(".") if node else []
@@ -23,6 +35,7 @@ def _parse_run_results(path: Path, run_id: str) -> list[dict]:
             model_name = parts[-1]
         else:
             model_name = None
+
         rows.append({
             "run_id": run_id,
             "resource_type": resource_type,
@@ -33,6 +46,7 @@ def _parse_run_results(path: Path, run_id: str) -> list[dict]:
             "compiled_code": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
+
     return rows
 
 
@@ -42,8 +56,23 @@ def insert_dbt_results(
     run_results_path: Path,
     run_results_run_path: Path | None = None,
 ) -> None:
+    """
+    Insert dbt execution results into a BigQuery monitoring table.
+
+    Args:
+        project_id: Google Cloud project ID.
+        run_id: Unique pipeline execution identifier.
+        run_results_path: Path to the dbt test run_results.json file.
+        run_results_run_path: Optional path to the dbt run run_results.json file.
+
+    Raises:
+        RuntimeError: Raised if the BigQuery insertion fails.
+    """
     # Merge models + tests
-    rows = _parse_run_results(run_results_run_path, run_id) + _parse_run_results(run_results_path, run_id)
+    rows = (
+        _parse_run_results(run_results_run_path, run_id)
+        + _parse_run_results(run_results_path, run_id)
+    )
 
     if not rows:
         return

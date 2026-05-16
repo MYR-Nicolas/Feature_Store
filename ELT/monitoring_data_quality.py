@@ -1,9 +1,19 @@
 from datetime import datetime, timezone
+
 import pandas as pd
 from google.cloud import bigquery
 
 
-def compute_quality_metrics(df):
+def compute_quality_metrics(df: pd.DataFrame) -> dict:
+    """
+    Compute basic data quality metrics for a DataFrame.
+
+    Args:
+        df: Input DataFrame to analyze.
+
+    Returns:
+        A dictionary containing data quality metrics.
+    """
     metrics = {}
 
     ts_col = "timestamp" if "timestamp" in df.columns else "open_time"
@@ -21,7 +31,22 @@ def compute_quality_metrics(df):
     return metrics
 
 
-def insert_quality_metrics(project_id, run_id, metrics):
+def insert_quality_metrics(
+    project_id: str,
+    run_id: str,
+    metrics: dict,
+) -> None:
+    """
+    Insert data quality metrics into BigQuery.
+
+    Args:
+        project_id: Google Cloud project ID.
+        run_id: Unique pipeline execution identifier.
+        metrics: Dictionary containing quality metrics.
+
+    Raises:
+        RuntimeError: Raised when the BigQuery insertion fails.
+    """
     client = bigquery.Client(project=project_id)
 
     table_id = f"{project_id}.monitoring.data_quality"

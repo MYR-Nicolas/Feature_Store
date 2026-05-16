@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from google.cloud import bigquery
 
 
@@ -15,7 +16,27 @@ def insert_pipeline_run(
     error_message: str | None = None,
     github_sha: str | None = None,
     image_uri: str | None = None,
-):
+) -> None:
+    """
+    Insert pipeline execution metadata into BigQuery.
+
+    Args:
+        project_id: Google Cloud project ID.
+        run_id: Unique pipeline execution identifier.
+        pipeline_name: Name of the pipeline.
+        status: Pipeline execution status.
+        started_at: Pipeline start datetime.
+        ended_at: Pipeline end datetime.
+        duration_seconds: Total execution duration in seconds.
+        rows_extracted: Optional number of extracted rows.
+        rows_loaded: Optional number of loaded rows.
+        error_message: Optional pipeline error message.
+        github_sha: Optional GitHub commit SHA.
+        image_uri: Optional container image URI.
+
+    Raises:
+        RuntimeError: Raised when the BigQuery insertion fails.
+    """
     client = bigquery.Client(project=project_id)
 
     table_id = f"{project_id}.monitoring.pipeline_runs"

@@ -1,9 +1,3 @@
-"""
-ELT/export_cache.py
-Exporte les données de monitoring vers GCS après chaque run.
-Le dashboard Streamlit lit ce fichier JSON via URL publique — sans auth GCP.
-"""
-
 import json
 import logging
 from datetime import datetime, timezone
@@ -25,48 +19,88 @@ def export_monitoring_cache(
     dbt_run_results_run_path: Path | None = None,
 ) -> str:
     """
-    Construit le payload de monitoring et l'uploade sur GCS.
-    Retourne l'URL publique du fichier.
+    Export monitoring data to a JSON cache stored in GCS.
+
+    The cache contains:
+        - Pipeline execution metadata
+        - dbt execution results
+        - Data quality metrics
+        - Recent pipeline execution history
+
+    Args:
+        project_id: Google Cloud project ID.
+        bucket_name: Target GCS bucket name.
+        run_id: Unique pipeline execution identifier.
+        pipeline_run: Pipeline execution metadata.
+        dbt_results: Parsed dbt execution results.
+        quality_metrics: Data quality metrics dictionary.
+        dbt_run_results_path: Optional path to dbt test run_results.json.
+        dbt_run_results_run_path: Optional path to dbt run run_results.json.
+
+    Returns:
+        The public URL of the exported monitoring cache file.
     """
     from google.cloud import bigquery, storage
 
-    # ── Récupère l'historique des 20 dernières runs depuis BQ ────────────────
+    # Fetch the last 20 pipelines runs from BigQuery
     history = []
+
     try:
         bq = bigquery.Client(project=project_id)
-        rows = list(bq.query(f"""
-            SELECT run_id, status, started_at, duration_seconds,
-                   rows_extracted, rows_loaded
-            FROM `{project_id}.monitoring.pipeline_runs`
-            ORDER BY started_at DESC
-            LIMIT 20
-        """).result())
-        history = [dict(r) for r in rows]
-    except Exception:
-        logger.warning("Could not fetch pipeline history from BigQuery for cache export")
 
-    # Récupère les résultats dbt depuis run_results.json
+        rows = list(
+            bq.query(f"""
+                SELECT run_id, status, started_at, duration_seconds,
+                       rows_extracted, rows_loaded
+                FROM `{project_id}.monitoring.pipeline_runs`
+                ORDER BY started_at DESC
+                LIMIT 20
+            """).result()
+        )
+
+        history = [dict(r) for r in rows]
+
+    except Exception:
+        logger.warning(
+            "Could not fetch pipeline history from BigQuery for cache export"
+        )
+
+    # Parse dbt run_results.json files
     dbt_rows = []
 
     def _parse(path: Path | None) -> list[dict]:
+        """
+        Parse a dbt run_results.json file.
+
+        Args:
+            path: Path to the dbt run_results.json file.
+
+        Returns:
+            A list of normalized dbt result dictionaries.
+        """
         if not path or not path.exists():
             return []
+
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
+
             rows = []
+
             for result in data.get("results", []):
                 node = result.get("unique_id", "")
                 parts = node.split(".") if node else []
                 resource_type = parts[0] if parts else None
-                # test unique_id: test.project.test_name.hash → parts[-2]
-                # model unique_id: model.project.model_name   → parts[-1]
+
+                # test.project.test_name.hash -> parts[-2]
+                # model.project.model_name -> parts[-1]
                 if resource_type == "test" and len(parts) >= 3:
                     model_name = parts[-2]
                 elif parts:
                     model_name = parts[-1]
                 else:
                     model_name = None
+
                 rows.append({
                     "run_id": run_id,
                     "resource_type": resource_type,
@@ -76,18 +110,24 @@ def export_monitoring_cache(
                     "message": result.get("message"),
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 })
+
             return rows
+
         except Exception:
             logger.warning("Could not parse %s for cache export", path)
             return []
 
     if dbt_run_results_path or dbt_run_results_run_path:
-        # Merge: models from run snapshot + tests from test results
-        dbt_rows = _parse(dbt_run_results_run_path) + _parse(dbt_run_results_path)
+        # Merge models + tests
+        dbt_rows = (
+            _parse(dbt_run_results_run_path)
+            + _parse(dbt_run_results_path)
+        )
     else:
-        dbt_rows = dbt_results  # fallback si déjà parsé
+        # Fallback if dbt results are already parsed
+        dbt_rows = dbt_results
 
-    # Construit le payload complet
+    # Build monitoring payload
     fetched_at = datetime.now(timezone.utc).isoformat()
 
     payload = {
@@ -110,7 +150,7 @@ def export_monitoring_cache(
         "_run_id": run_id,
     }
 
-    # Upload vers GCS
+    # Upload cache to GCS
     gcs = storage.Client(project=project_id)
     bucket = gcs.bucket(bucket_name)
     blob = bucket.blob(GCS_CACHE_BLOB)
@@ -120,6 +160,11 @@ def export_monitoring_cache(
         content_type="application/json",
     )
 
-    public_url = f"https://storage.googleapis.com/{bucket_name}/{GCS_CACHE_BLOB}"
+    public_url = (
+        f"https://storage.googleapis.com/"
+        f"{bucket_name}/{GCS_CACHE_BLOB}"
+    )
+
     logger.info("Monitoring cache exported to GCS: %s", public_url)
+
     return public_url

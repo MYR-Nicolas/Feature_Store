@@ -7,14 +7,13 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ELT.extract import extract_with_fallback
+from ELT.extract import extract_with_fallback, get_full_week_window
 from ELT.load import load_df_to_gcs
 from ELT.config import settings
 from ELT.monitoring import insert_pipeline_run
 from ELT.dbt_monitoring import insert_dbt_results
 from ELT.monitoring_data_quality import compute_quality_metrics, insert_quality_metrics
 from ELT.export_metrics import export_monitoring_cache
-from ELT.extract import extract_with_fallback, get_full_week_window
 
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +32,16 @@ def run_command(command: list[str], cwd: Path) -> None:
         text=True,
         shell=False,
     )
+    """
+    Run a shell command and validate its execution.
+
+    Args:
+        command: Command and arguments to execute.
+        cwd: Working directory used for the command.
+
+    Raises:
+        RuntimeError: Raised when the command exits with a non zero status.
+    """
 
     if result.stdout:
         logger.info(result.stdout)
@@ -45,6 +54,18 @@ def run_command(command: list[str], cwd: Path) -> None:
 
 
 def run_dbt_pipeline() -> None:
+    """
+    Execute the full dbt pipeline.
+
+    The pipeline includes:
+        - dbt debug
+        - dbt deps
+        - dbt run
+        - dbt test
+
+    It also saves a snapshot of dbt run results.
+    """
+        
     logger.info("Running dbt debug")
     run_command(["dbt", "debug", "--profiles-dir", "."], DBT_DIR)
 
@@ -54,7 +75,6 @@ def run_dbt_pipeline() -> None:
     logger.info("Running dbt transformations")
     run_command(["dbt", "run", "--profiles-dir", "."], DBT_DIR)
 
-    
     run_results = DBT_DIR / "target" / "run_results.json"
     run_results_snapshot = DBT_DIR / "target" / "run_results_run.json"
     if run_results.exists():
@@ -66,19 +86,46 @@ def run_dbt_pipeline() -> None:
     run_command(["dbt", "test", "--profiles-dir", "."], DBT_DIR)
 
 
-def build_weekly_paths() -> tuple[str, str]:
-    start_dt, _ = get_full_week_window()                    
+def build_weekly_paths(start_dt: datetime) -> tuple[str, str]:
+    """
+    Build local and GCS paths for weekly exports.
+
+    Args:
+        start_dt: Start datetime of the extraction window.
+
+    Returns:
+        A tuple containing:
+            - Local Parquet file path
+            - GCS destination path
+    """
     week_start = start_dt.strftime("%Y%m%d")
-    filename = f"btc_1m_weekly_{week_start}.parquet"        
+    filename = f"btc_1m_weekly_{week_start}.parquet"
     local_path = f"data/weekly/{filename}"
     gcs_path = f"{settings.GCS_PREFIX}/weekly/{filename}"
     return local_path, gcs_path
 
 
 def run_pipeline():
+    """
+    Run the weekly BTC ELT pipeline.
+
+    The pipeline performs:
+        - Data extraction
+        - Data upload to GCS
+        - dbt transformations and tests
+
+    Returns:
+        A tuple containing:
+            - Number of extracted rows
+            - Number of loaded rows
+            - Extracted dataframe
+    """
     logger.info("Starting BTC weekly ELT pipeline")
 
-    df = extract_with_fallback()
+    start_dt, end_dt = get_full_week_window()
+    logger.info("Extraction window UTC: %s → %s", start_dt, end_dt)
+
+    df = extract_with_fallback(start_dt=start_dt, end_dt=end_dt)
 
     rows_extracted = len(df)
     rows_loaded = len(df)
@@ -86,7 +133,7 @@ def run_pipeline():
     logger.info("Extracted rows: %s", rows_extracted)
     logger.info("Columns: %s", list(df.columns))
 
-    local_path, gcs_path = build_weekly_paths()
+    local_path, gcs_path = build_weekly_paths(start_dt)
 
     gcs_uri = load_df_to_gcs(
         df=df,
@@ -102,6 +149,16 @@ def run_pipeline():
 
 
 def main() -> None:
+    """
+    Run the complete production pipeline workflow.
+
+    The workflow includes:
+        - Pipeline execution
+        - Data quality computation
+        - Monitoring logging
+        - dbt result logging
+        - Monitoring cache export
+    """
     project_id = os.environ["GCP_PROJECT_ID"]
 
     run_id = str(uuid.uuid4())
@@ -183,7 +240,6 @@ def main() -> None:
             except Exception:
                 logger.exception("Failed to log data quality metrics to BigQuery")
 
-        # Export metrics GCS pour le dashboard Streamlit
         bucket_name = os.getenv("GCS_BUCKET_NAME_CACHE", "")
         if bucket_name:
             try:

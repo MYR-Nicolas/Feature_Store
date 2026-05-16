@@ -17,29 +17,68 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 def utc_now() -> datetime:
-    """Return current UTC timestamp"""
+    """
+    Return the current UTC datetime.
+
+    Returns:
+        The current datetime with UTC timezone.
+    """
     return datetime.now(timezone.utc)
 
 
 def to_milliseconds(dt: datetime) -> int:
-    """Convert datetime to milliseconds (Binance format)"""
+    """
+    Convert a datetime to Unix milliseconds.
+
+    Args:
+        dt: Datetime to convert.
+
+    Returns:
+        Datetime expressed in milliseconds.
+    """
     return int(dt.timestamp() * 1000)
 
 
 def floor_to_minute(dt: datetime) -> datetime:
-    """Round datetime down to the nearest minute"""
+    """
+    Round a datetime down to the nearest minute.
+
+    Args:
+        dt: Datetime to round.
+
+    Returns:
+        Datetime without seconds and microseconds.
+    """
     return dt.replace(second=0, microsecond=0)
 
 
 def isoformat_z(dt: datetime) -> str:
-    """Format datetime to ISO string expected by Coinbase/CoinAPI"""
+    """
+    Convert a datetime to an ISO UTC string ending with Z.
+
+    Args:
+        dt: Datetime to format.
+
+    Returns:
+        ISO-formatted UTC datetime string.
+    """
     return dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
 
 def get_full_week_window(reference_dt: Optional[datetime] = None) -> Tuple[datetime, datetime]:
     """
-    Return the previous complete UTC week:
-    Monday 00:00 UTC -> next Monday 00:00 UTC exclusive.
+    Return the previous complete UTC week window.
+
+    The window starts on Monday at 00:00 UTC and ends on the next
+    Monday at 00:00 UTC exclusive.
+
+    Args:
+        reference_dt: Optional reference datetime. If not provided,
+            the current UTC datetime is used.
+
+    Returns:
+        A tuple containing the start and end datetime of the previous
+        complete UTC week.
     """
 
     reference_dt = reference_dt or utc_now()
@@ -67,12 +106,20 @@ def http_get_with_retry(
     source_name: str = "unknown",
 ) -> requests.Response:
     """
-    HTTP wrapper with retry mechanism.
-    
-    Handles:
-    - network timeouts
-    - temporary API failures
-    - rate limiting issues
+    Send an HTTP GET request with retry logic.
+
+    Args:
+        url: Target API URL.
+        params: Optional query parameters.
+        headers: Optional HTTP headers.
+        timeout: Optional request timeout in seconds.
+        source_name: Name of the data source used for logging.
+
+    Returns:
+        The successful HTTP response.
+
+    Raises:
+        RuntimeError: Raised when all retry attempts fail.
     """
     timeout = timeout or settings.TIMEOUT
     last_exception = None
@@ -118,6 +165,19 @@ COMMON_COLUMNS = [
 
 def finalize_dataframe(df: pd.DataFrame, source: str, symbol: str, interval: str) -> pd.DataFrame:
 
+    """
+    Standardize an OHLCV dataframe.
+
+    Args:
+        df: Raw OHLCV dataframe.
+        source: Name of the data source.
+        symbol: Trading pair symbol.
+        interval: Candle interval.
+
+    Returns:
+        A cleaned and standardized OHLCV dataframe.
+    """
+        
     if df is None or df.empty:
         return pd.DataFrame(columns=COMMON_COLUMNS)
 
@@ -155,12 +215,15 @@ def expected_rows_for_minutes(start_dt: datetime, end_dt: datetime) -> int:
 
 def validate_ohlcv_dataframe(df, start_dt, end_dt) -> bool:
     """
-    Validate data quality before accepting it.
-    
-    Prevents:
-    - corrupted training data
-    - missing time steps
-    - structural inconsistencies
+    Validate the quality of an OHLCV dataframe.
+
+    Args:
+        df: OHLCV dataframe to validate.
+        start_dt: Expected start datetime.
+        end_dt: Expected end datetime.
+
+    Returns:
+        True if the dataframe is valid, otherwise False.
     """
 
     if df is None or df.empty:
@@ -192,10 +255,14 @@ def validate_ohlcv_dataframe(df, start_dt, end_dt) -> bool:
 
 def extract_from_binance(start_dt=None, end_dt=None):
     """
-    Paginated extraction from Binance.
-    
-    Binance limit: 1000 candles per request.
-    -> requires loop pagination
+    Extract OHLCV candles from Binance.
+
+    Args:
+        start_dt: Optional extraction start datetime.
+        end_dt: Optional extraction end datetime.
+
+    Returns:
+        A standardized OHLCV dataframe.
     """
 
     if start_dt is None or end_dt is None:
@@ -251,10 +318,14 @@ def extract_from_binance(start_dt=None, end_dt=None):
 
 def extract_from_coinbase(start_dt=None, end_dt=None):
     """
-    Coinbase extraction.
-    
-    Limitation: max ~300 candles per request
-    -> requires time window slicing
+    Extract OHLCV candles from Coinbase.
+
+    Args:
+        start_dt: Optional extraction start datetime.
+        end_dt: Optional extraction end datetime.
+
+    Returns:
+        A standardized OHLCV dataframe.
     """
 
     if start_dt is None or end_dt is None:
@@ -297,6 +368,19 @@ def extract_from_coinbase(start_dt=None, end_dt=None):
 # ==============================
 
 def extract_from_coinapi(start_dt=None, end_dt=None):
+    """
+    Extract OHLCV candles from CoinAPI.
+
+    Args:
+        start_dt: Optional extraction start datetime.
+        end_dt: Optional extraction end datetime.
+
+    Returns:
+        A standardized OHLCV dataframe.
+
+    Raises:
+        RuntimeError: Raised when the CoinAPI key is missing.
+    """
 
     if not settings.COINAPI_KEY:
         raise RuntimeError("Missing COINAPI_KEY")
@@ -340,11 +424,19 @@ def extract_from_coinapi(start_dt=None, end_dt=None):
 
 def extract_with_fallback(start_dt=None, end_dt=None):
     """
-    Resilient extraction strategy:
-    
-    1. Binance (primary)
-    2. Coinbase (fallback)
-    3. CoinAPI (final fallback)
+    Extract OHLCV data using a fallback strategy.
+
+    The extraction tries Binance first, then Coinbase, and finally CoinAPI.
+
+    Args:
+        start_dt: Optional extraction start datetime.
+        end_dt: Optional extraction end datetime.
+
+    Returns:
+        A valid standardized OHLCV dataframe.
+
+    Raises:
+        RuntimeError: Raised when all data sources fail.
     """
 
     if start_dt is None or end_dt is None:
