@@ -1,3 +1,4 @@
+-- Final feature store model 
 {{
     config(
         materialized='incremental',

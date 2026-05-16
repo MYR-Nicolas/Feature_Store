@@ -1,3 +1,5 @@
+-- Intermediate Ichimoku feature model.
+-- Computes core Ichimoku indicator components
 {{ config(materialized='view') }}
 
 SELECT

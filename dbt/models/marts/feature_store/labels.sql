@@ -1,3 +1,4 @@
+-- Final labels store model 
 {{
     config(
         materialized='incremental',

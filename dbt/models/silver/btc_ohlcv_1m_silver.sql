@@ -1,3 +1,5 @@
+
+-- Silver model for cleaned BTC OHLCV one minute candles.
 {{ config(materialized='view') }}
 
 WITH deduped AS (

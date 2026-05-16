@@ -1,3 +1,4 @@
+-- Feature engineering model
 {{ config(materialized='view') }}
 
 WITH feat AS (
