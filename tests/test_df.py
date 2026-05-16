@@ -3,6 +3,14 @@ from ELT.extract import finalize_dataframe, COMMON_COLUMNS
 
 
 def test_finalize_dataframe_standardizes_schema():
+    """Test that finalize_dataframe standardizes the OHLCV schema.
+
+    Validates:
+        - Expected column order
+        - Metadata enrichment
+        - Numeric type conversion
+        - Datetime conversion
+    """
     df = pd.DataFrame({
         "open_time": ["2024-01-01 00:00:00"],
         "close_time": ["2024-01-01 00:01:00"],
